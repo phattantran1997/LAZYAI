@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+motor
+pydantic
+langchain
+langchain-ollama
+langchain-core
+python-dotenv 
