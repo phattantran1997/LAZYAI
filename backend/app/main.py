@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 import os
-from app.routers import ask, quiz
+from app.routers import quiz
 from app.routers.ask_router import router as ask_router
+from app.routers.user import router as user_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,15 +20,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# MongoDB connection
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/mydb")
-client = AsyncIOMotorClient(MONGODB_URI)
-database = client.mentorship
-
 # Include routers
-app.include_router(ask.router)
 app.include_router(quiz.router)
 app.include_router(ask_router)
+app.include_router(user_router)
 
 # Health-check route
 @app.get("/health")
