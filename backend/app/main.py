@@ -1,10 +1,10 @@
+from app.routers.user_router import router as user_router
+from app.routers.ask_router  import router as ask_router
+from app.routers.quiz_router import router as quiz_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
-from backend.app.routers import quiz_router
-from app.routers.ask_router import router as ask_router
-from backend.app.routers.user_router import router as user_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,7 +21,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(quiz_router.router)
+app.include_router(quiz_router)
 app.include_router(ask_router)
 app.include_router(user_router)
 

@@ -1,6 +1,11 @@
 from motor.motor_asyncio import AsyncIOMotorClient
-from app.config import settings
+from dotenv import load_dotenv
+import os
 
-client = AsyncIOMotorClient(settings.MONGO_URI)
-# Uses database name from URI or defaults to 'test'
-db = client.get_default_database()
+# Load environment variables
+load_dotenv()
+
+# MongoDB connection
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/mydb")
+client = AsyncIOMotorClient(MONGODB_URI)
+database = client.mentorship 

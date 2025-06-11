@@ -10,4 +10,4 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8"
     )
 
-settings = Settings(MONGO_URI="mongodb://localhost:27017")  
+settings = Settings(MONGO_URI="mongodb://localhost:27017/mydb")  
