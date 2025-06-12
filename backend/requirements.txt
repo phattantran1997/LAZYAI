@@ -3,6 +3,7 @@ uvicorn[standard]
 motor
 pydantic
 pydantic_settings
+mongoengine
 langchain
 langchain-ollama
 langchain-core
