@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 motor
 pydantic
+pydantic_settings
 langchain
 langchain-ollama
 langchain-core
