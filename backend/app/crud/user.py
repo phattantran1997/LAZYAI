@@ -3,6 +3,8 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from mongoengine.errors import NotUniqueError
 
+#------------------------ Password Hashing ------------------------>
+
 # Password hashing context (using bcrypt)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -13,6 +15,8 @@ def hash_password(password: str) -> str:
 # Helper function to verify passwords
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
+
+# ------------------------ CRUD Operations ------------------------>
 
 # Create a new user
 def create_user(user_in: UserCreate) -> User:
@@ -36,6 +40,8 @@ def create_user(user_in: UserCreate) -> User:
     user.save()  # Save the user in the database
     return user
 
+# ------------------------------------------------------------------>
+
 # Get a user by ID
 def get_user_by_id(user_id: str) -> User:
     user = User.objects(id=user_id).first()
@@ -47,6 +53,8 @@ def get_user_by_id(user_id: str) -> User:
 def get_all_users(skip: int = 0, limit: int = 100) -> list:
     users = User.objects.skip(skip).limit(limit)
     return users
+
+# ------------------------------------------------------------------>
 
 # Update a user
 def update_user(user_id: str, user_in: UserUpdate) -> User:
@@ -68,6 +76,8 @@ def update_user(user_id: str, user_in: UserUpdate) -> User:
 
     user.save()
     return user
+
+# ------------------------------------------------------------------>
 
 # Delete a user
 def delete_user(user_id: str) -> bool:
