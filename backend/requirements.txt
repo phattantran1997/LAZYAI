@@ -8,3 +8,4 @@ langchain
 langchain-ollama
 langchain-core
 python-dotenv 
+streamlit
