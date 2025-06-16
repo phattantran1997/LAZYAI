@@ -8,5 +8,3 @@ langchain
 langchain-ollama
 langchain-core
 python-dotenv 
-email-validator
-passlib
