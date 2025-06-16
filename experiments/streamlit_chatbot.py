@@ -29,3 +29,7 @@ if prompt:
     with st.chat_message("assistant"):
         st.markdown(result)
         st.session_state.messages.append(AIMessage(result))
+"""
+Fine tuning Llama 3.2 model at Notebook:
+Huggingface: https://huggingface.co/volam1311/outputs
+"""
