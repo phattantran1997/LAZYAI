@@ -1,0 +1,11 @@
+Parameters:
+  S3BucketName:
+    Type: String
+    Default: "LazyS3Buckett"
+    Description: "The name of the S3 bucket to create"
+
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3BucketName
