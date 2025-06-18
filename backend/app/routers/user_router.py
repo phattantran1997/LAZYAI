@@ -2,7 +2,7 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, status
 from app.schemas.user import UserCreate, UserUpdate, UserRead
-from app.crud.user import create_user, get_user_by_id, get_all_users, update_user, delete_user
+from app.services.userService import create_user, get_user_by_id, get_all_users, update_user, delete_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
