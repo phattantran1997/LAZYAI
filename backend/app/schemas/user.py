@@ -1,35 +1,48 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
-# ------------------------ Base ------------------------->
+# ------------------------------------------------------------->
 
-class UserBase(BaseModel):
-    username: str = Field(..., description="Unique username for the user")
-    name: str = Field(..., description="Full name of the user")
-    email: EmailStr = Field(..., description="Email address of the user")
-    role: str = Field(..., description="Role of the user")  # 'user', 'admin', etc.
+'''
 
-# ------------------------- Create ---------------------------->
+    User in database would have those attributes:
+        - Username
+        - Name
+        - Email
+        - Password
+        - Role
+        
+'''
 
-class UserCreate(UserBase):
-    password: str = Field(..., description="Password for the user")  # Required for creation
+# ------------------------- Register ---------------------------->
 
-# ------------------------- Read ---------------------------->
-
-class UserRead(UserBase):
-    id: str  # MongoDB ObjectId converted to string for the response
+class UserRegister(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    name: str = Field(..., min_length=2, max_length=50)
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=100)
+    role: str = Field(default="user")
 
     class Config:
-        orm_mode = True  
+        from_attributes = True
+
+# ------------------------- Log In ---------------------------->
+
+class UserLogin(BaseModel):
+    username: str = Field()  
+    password: str = Field()  
+
+    class Config:
+        from_attributes = True
 
 # ------------------------- Update ---------------------------->
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = Field(None, description="New username for the user")
-    name: Optional[str] = Field(None, description="New name for the user")
-    email: Optional[EmailStr] = Field(None, description="New email for the user")
-    role: Optional[str] = Field(None, description="New role of the user")
-    is_active: Optional[bool] = Field(None, description="New active status")
+    username: Optional[str] = Field(None)
+    name: Optional[str] = Field(None)
+    email: Optional[EmailStr] = Field(None)
+    role: Optional[str] = Field(None)
+    is_active: Optional[bool] = Field(None)
     
     class Config:
-        orm_mode = True  
+        from_attributes = True  
