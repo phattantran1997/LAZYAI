@@ -2,7 +2,9 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, status
 from app.schemas.user import UserCreate, UserUpdate, UserRead
-from app.services.userService import create_user, get_user_by_id, get_all_users, update_user, delete_user
+from app.services.userService import *
+from app.request.UserLogin import UserLogin
+from app.request.UserRegister import UserRegister
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -55,3 +57,23 @@ async def delete_user_endpoint(user_id: str):
         return {"message": "User deleted successfully"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+# ---------------------------------------------------------------->
+
+#Login User
+@router.post("/login", status_code=status.HTTP_200_OK)
+async def login_user_endpoint(user_in: UserLogin):
+    try:
+        result = login_user(user_in)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+#Register User
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+async def register_user_endpoint(user_in: UserRegister):
+    try:
+        user = register_user(user_in)
+        return {"message": "User registered successfully", "user_id": str(user.id)}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
