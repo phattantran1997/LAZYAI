@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
+import app.database  # Import to establish database connection
 
 # Load environment variables from .env file
 load_dotenv()

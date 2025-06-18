@@ -4,8 +4,11 @@ motor
 pydantic
 pydantic_settings
 mongoengine
+passlib
 langchain
 langchain-ollama
 langchain-core
 python-dotenv 
 streamlit
+bcrypt
+python-jose

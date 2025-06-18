@@ -1,4 +1,4 @@
-from motor.motor_asyncio import AsyncIOMotorClient
+from mongoengine import connect
 from dotenv import load_dotenv
 import os
 
@@ -6,6 +6,7 @@ import os
 load_dotenv()
 
 # MongoDB connection
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/mydb")
-client = AsyncIOMotorClient(MONGODB_URI)
-database = client.mentorship 
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/mentorship")
+
+# Connect to MongoDB using MongoEngine
+connect(host=MONGODB_URI) 

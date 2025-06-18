@@ -2,7 +2,10 @@ from passlib.context import CryptContext
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from mongoengine.errors import NotUniqueError
-
+from app.request.UserLogin import UserLogin
+from app.request.UserRegister import UserRegister
+from app.auth.jwt_handler import create_access_token
+from datetime import timedelta
 #------------------------ Password Hashing ------------------------>
 
 # Password hashing context (using bcrypt)
@@ -13,13 +16,13 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 # Helper function to verify passwords
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def compare_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 # ------------------------ CRUD Operations ------------------------>
 
 # Create a new user
-def create_user(user_in: UserCreate) -> User:
+def create_user(user_in: UserRegister) -> User:
     # Check if email or username already exists
     if User.objects(email=user_in.email).first():
         raise ValueError("Email already registered")
@@ -86,3 +89,34 @@ def delete_user(user_id: str) -> bool:
         raise ValueError("User not found")
     user.delete()
     return True
+
+#Login User
+def login_user(userLogin: UserLogin) -> dict:
+    user = User.objects(username=userLogin.username).first()
+    if not user:
+        raise ValueError("User not found")
+    if not compare_password(userLogin.password, user.password):
+        raise ValueError("Invalid password")
+    
+    # Create JWT token
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role, "user_id": str(user.id)}
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": str(user.id),
+            "username": user.username,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role
+        }
+    }
+
+def register_user(userRegister: UserRegister) -> User:
+    user = User.objects(username=userRegister.username).first()
+    if user:
+        raise ValueError("User already exists")
+    return create_user(userRegister)
