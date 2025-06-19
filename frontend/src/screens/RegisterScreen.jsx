@@ -12,20 +12,20 @@ const RegisterScreen = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [repassword, setRepassword] = useState('')
-    const [role, setRole] = useState('')
+    const [role, setRole] = useState('Students')
     const navigate = useNavigate()
-    const { login, loading, error, setError } = useAuth()
+    const { register, loading, error, setError } = useAuth()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
         setError('')
         try {
-            const { user } = await login(username, password)
-            if (user.role === 'teacher') {
-                navigate('/teacher')
-            } else {
-                navigate('/student')
+            if (password !== repassword) {
+                setError('Passwords do not match')
+                return
             }
+            await register(username, name, email, password, role)
+            navigate('/login')
         } catch (err) {
             // error is already set in context
         }

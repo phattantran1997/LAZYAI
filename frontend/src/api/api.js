@@ -12,3 +12,16 @@ export async function loginUser(username, password) {
   }
   return response.json();
 }
+
+export async function registerUser(username, name, email, password, role) {
+  const response = await fetch(`${API_URL}/users/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, name, email, password, role }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Registration failed');
+  }
+  return response.json();
+}
