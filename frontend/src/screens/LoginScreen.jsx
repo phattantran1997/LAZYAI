@@ -10,15 +10,20 @@ const LoginScreen = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, loading, error, setError } = useAuth()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    const user = login(username, password)
-    if (user.isTeacher) {
-      navigate('/teacher')
-    } else {
-      navigate('/student')
+    setError('')
+    try {
+      const { user } = await login(username, password)
+      if (user.role === 'teacher') {
+        navigate('/teacher')
+      } else {
+        navigate('/student')
+      }
+    } catch (err) {
+      // error is already set in context
     }
   }
 
@@ -61,9 +66,10 @@ const LoginScreen = () => {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full">
+            {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
+            <Button type="submit" className="w-full" disabled={loading}>
               <LogIn className="mr-2 h-4 w-4" />
-              Sign In
+              {loading ? 'Signing In...' : 'Sign In'}
             </Button>
           </CardFooter>
         </form>
@@ -72,4 +78,4 @@ const LoginScreen = () => {
   )
 }
 
-export default LoginScreen 
+export default LoginScreen
