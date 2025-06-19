@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -17,6 +17,7 @@ const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { user, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
 
   const teacherMenuItems = [
     { path: '/teacher/upload', label: 'Upload Material', icon: Upload },
@@ -30,6 +31,11 @@ const Sidebar = () => {
   ]
 
   const menuItems = user?.isTeacher ? teacherMenuItems : studentMenuItems
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   return (
     <div
@@ -89,7 +95,7 @@ const Sidebar = () => {
           variant="ghost"
           size="sm"
           className="mt-4 w-full justify-start"
-          onClick={logout}
+          onClick={handleLogout}
         >
           <LogOut className="mr-2 h-4 w-4" />
           {!isCollapsed && 'Logout'}
