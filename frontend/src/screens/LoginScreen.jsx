@@ -30,13 +30,16 @@ const LoginScreen = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
+
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
           <CardDescription className="text-center">
             Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
+
         <form onSubmit={handleSubmit}>
+
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="username" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -65,6 +68,7 @@ const LoginScreen = () => {
               />
             </div>
           </CardContent>
+
           <CardFooter>
             {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
             <Button type="submit" className="w-full" disabled={loading}>
@@ -72,7 +76,21 @@ const LoginScreen = () => {
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
           </CardFooter>
+
         </form>
+
+        <CardFooter className="items-center justify-center">
+          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            Haven't got an account?
+          </label>
+          <a
+            href="/signup"
+            className="text-sm font-medium underline text-blue-500 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 pl-3 hover:cursor-pointer"
+          >
+            Sign up
+          </a>
+        </CardFooter>
+
       </Card>
     </div>
   )
