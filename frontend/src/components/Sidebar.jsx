@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -39,9 +39,8 @@ const Sidebar = () => {
 
   return (
     <div
-      className={`relative h-screen bg-card border-r transition-all duration-300 ${
-        isCollapsed ? 'w-16' : 'w-64'
-      }`}
+      className={`relative h-screen bg-card border-r transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'
+        }`}
     >
       <div className="flex h-14 items-center border-b px-4">
         {!isCollapsed && <h1 className="text-lg font-semibold">LAZYAI</h1>}
@@ -63,11 +62,10 @@ const Sidebar = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-                  location.pathname === item.path
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${location.pathname === item.path
                     ? 'bg-accent text-accent-foreground'
                     : 'hover:bg-accent hover:text-accent-foreground'
-                }`}
+                  }`}
               >
                 <Icon className="h-4 w-4" />
                 {!isCollapsed && <span>{item.label}</span>}

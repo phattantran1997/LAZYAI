@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +14,7 @@ const RegisterScreen = () => {
     const [repassword, setRepassword] = useState('')
     const [role, setRole] = useState('Students')
     const navigate = useNavigate()
-    const { register, loading, error, setError } = useAuth()
+    const { signup, loading, error, setError } = useAuth()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -24,7 +24,7 @@ const RegisterScreen = () => {
                 setError('Passwords do not match')
                 return
             }
-            await register(username, name, email, password, role)
+            await signup(username, name, email, password, role)
             navigate('/login')
         } catch (err) {
             // error is already set in context
@@ -116,7 +116,7 @@ const RegisterScreen = () => {
                             </label>
                             <select
                                 className="w-full h-9 rounded-md border border-input text-sm font-medium pl-4"
-                                onSelect={(e) => setRole(e.target.value)}
+                                onChange={(e) => setRole(e.target.value)}
                             >
                                 <option>
                                     Students
