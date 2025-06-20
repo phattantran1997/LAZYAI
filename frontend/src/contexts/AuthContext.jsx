@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { loginUser } from '@/api/api'
+import { loginUser, registerUser } from '@/api/api'
 
 const AuthContext = createContext(null)
 
@@ -19,6 +19,24 @@ export const AuthProvider = ({ children }) => {
       setToken(storedToken)
     }
   }, [])
+
+  const register = async (username, name, email, password, role) => {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await registerUser(username, name, email, password, role)
+      setUser(data.user)
+      setToken(data.access_token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      localStorage.setItem('token', data.access_token)
+      return { user: data.user, token: data.access_token }
+    } catch (err) {
+      setError(err.message)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const login = async (username, password) => {
     setLoading(true)
@@ -48,6 +66,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     token,
+    register,
     login,
     logout,
     loading,
