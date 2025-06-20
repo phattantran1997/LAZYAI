@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -64,16 +64,14 @@ const ChatScreen = () => {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${
-                  msg.sender === 'user' ? 'justify-end' : 'justify-start'
-                }`}
+                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
               >
                 <div
-                  className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                    msg.sender === 'user'
+                  className={`max-w-[70%] rounded-lg px-4 py-2 ${msg.sender === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
-                  }`}
+                    }`}
                 >
                   <p className="text-sm">{msg.text}</p>
                   <p className="mt-1 text-xs opacity-70">

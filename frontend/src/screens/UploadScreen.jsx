@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,7 +25,7 @@ const UploadScreen = () => {
 
     setIsUploading(true)
     setStatus('Waiting for fine-tune...')
-    
+
     // Simulate API call
     setTimeout(() => {
       const link = `/chat/${user.username}`

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ const LoginScreen = () => {
     e.preventDefault()
     setError('')
     try {
-      const { user } = await login(username, password)
+      const user = await login(username, password)
       if (user.role === 'teacher') {
         navigate('/teacher')
       } else {
