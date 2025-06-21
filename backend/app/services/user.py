@@ -52,11 +52,6 @@ def get_user_by_id(user_id: str) -> User:
         raise ValueError("User not found")
     return user
 
-# Get all users (optional)
-def get_all_users(skip: int = 0, limit: int = 100) -> list:
-    users = User.objects.skip(skip).limit(limit) # type: ignore
-    return users
-
 # -------------------------- Update ---------------------------------->
 
 # Update a user

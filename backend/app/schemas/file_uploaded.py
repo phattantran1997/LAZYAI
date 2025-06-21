@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 
 # ------------------------------------------------------------->
 
@@ -14,7 +15,8 @@ from pydantic import BaseModel, Field
 # ------------------------------------------------------------->
 
 
-class FileUploaded(BaseModel):
+class File(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
     file_name: str = Field(..., min_length=1, max_length=255)
     file_path: str = Field(..., min_length=1, max_length=255)
     upload_date: str  # ISO format date string

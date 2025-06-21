@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
-from app.schemas.file_uploaded import FileUploaded
+from app.schemas.file_uploaded import File
 
 # ------------------------------------------------------------->
 
@@ -52,4 +52,4 @@ class UserUpdate(BaseModel):
 # -------------------------- Teacher ---------------------------->
 
 class Teacher(UserRegister):
-    file_uploaded: Optional[FileUploaded] = None
+    file_uploaded: Optional[File] = None
