@@ -80,7 +80,7 @@ def update_user(user_id: str, user_input: UserUpdate) -> User:
     user.save()
     return user
 
-# --------------------- --- Delete --------------------------------->
+# ------------------------- Delete --------------------------------->
 
 # Delete a user
 def delete_user(user_id: str) -> bool:
