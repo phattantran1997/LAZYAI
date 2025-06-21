@@ -7,4 +7,6 @@ class FileUploaded(Document):
     size = IntField(required=True)  # Size in bytes
     username = StringField(required=True)  # Reference to the user who uploaded the file
 
+    meta = {'collection': 'file_uploaded'}
+
 

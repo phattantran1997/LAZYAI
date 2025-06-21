@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.schemas.user import *
-from app.services.user_service import *
+from app.services.user import *
 
 from typing import List
 
