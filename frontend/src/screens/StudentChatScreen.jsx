@@ -9,32 +9,48 @@ const StudentChatScreen = () => {
   const [message, setMessage] = useState('')
   const [messages, setMessages] = useState([])
 
+  // ---------------------- Ask for students' name --------------------------->
+
   useEffect(() => {
-    const storedName = localStorage.getItem('studentName')
-    if (storedName) {
-      setStudentName(storedName)
-    } else {
-      setShowModal(true)
+    // Check if user is logged in
+    const user = JSON.parse(localStorage.getItem('user'))
+    if (user) {
+      setStudentName(user.username)
     }
+
+    // Check if student name is already stored
+    else {
+      const storedName = localStorage.getItem('studentName')
+      if (!storedName) {
+        setShowModal(true)
+      } else {
+        setStudentName(storedName)
+      }
+    }
+
   }, [])
+
+  // ---------------- Submit name if it has not been stored ---------------------->
 
   const handleNameSubmit = (name) => {
     setStudentName(name)
     localStorage.setItem('studentName', name)
     setShowModal(false)
 
-    // Simulate logging student
-    fetch('/api/log-student', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        studentName: name,
-        teacherId,
-      }),
-    }).catch(console.error)
+    // // Simulate logging student
+    // fetch('/api/log-student', {
+    //   method: 'POST',
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //   },
+    //   body: JSON.stringify({
+    //     studentName: name,
+    //     teacherId,
+    //   }),
+    // }).catch(console.error)
   }
+
+  // ---------------- Handle message submission --------------------------->
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -62,6 +78,8 @@ const StudentChatScreen = () => {
     }, 1000)
   }
 
+  // ---------------- Render the chat screen --------------------------->
+
   if (showModal) {
     return <StudentNameModal onSubmit={handleNameSubmit} />
   }
@@ -79,16 +97,14 @@ const StudentChatScreen = () => {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${
-              msg.sender === 'user' ? 'justify-end' : 'justify-start'
-            }`}
+            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'
+              }`}
           >
             <div
-              className={`max-w-[70%] rounded-lg p-4 ${
-                msg.sender === 'user'
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-200 text-gray-800'
-              }`}
+              className={`max-w-[70%] rounded-lg p-4 ${msg.sender === 'user'
+                ? 'bg-primary text-white'
+                : 'bg-gray-200 text-gray-800'
+                }`}
             >
               <p>{msg.text}</p>
               <p className="text-xs mt-2 opacity-70">

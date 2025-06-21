@@ -17,7 +17,7 @@ const LoginScreen = () => {
     setError('')
     try {
       const user = await login(username, password)
-      if (user.role === 'teacher') {
+      if (user.role === 'Teachers') {
         navigate('/teacher')
       } else {
         navigate('/student')
