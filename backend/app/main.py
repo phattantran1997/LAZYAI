@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from app.routers.user_router import router as user_router
 # from app.routers.file_router import router as file_router
 from app.routers.ask_router  import router as ask_router
@@ -6,7 +7,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import connect_db, disconnect_db  # Updated import
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for FastAPI."""
+    connect_db()
+    yield
+    disconnect_db()
+
+app = FastAPI(lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(
@@ -16,16 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Connect to DB on startup
-@app.on_event("startup")
-async def startup_event():
-    connect_db()
-
-# Disconnect from DB on shutdown
-@app.on_event("shutdown")
-async def shutdown_event():
-    disconnect_db()
 
 # Include routers
 app.include_router(quiz_router)
