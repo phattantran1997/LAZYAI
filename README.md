@@ -1,6 +1,7 @@
-# 🧠 AI Critical Thinking Mentor (Backend)
+# 🧠 AI Critical Thinking Mentor
 
 An AI-powered FastAPI backend that discourages passive AI reliance by guiding users with hints, challenging them with quizzes, and promoting active learning — not just giving direct answers.
+![image](https://github.com/user-attachments/assets/b4aa71b4-c67c-4d61-9ea6-d6259f143205)
 
 ## 🚀 Features
 
