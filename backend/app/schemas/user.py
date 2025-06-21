@@ -1,11 +1,13 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
+from app.schemas.file_uploaded import FileUploaded
+
 # ------------------------------------------------------------->
 
 '''
 
-    User in database would have those attributes:
+    User schema would have those attributes:
         - Username
         - Name
         - Email
@@ -29,8 +31,8 @@ class UserRegister(BaseModel):
 # ------------------------- Log In ---------------------------->
 
 class UserLogin(BaseModel):
-    username: str = Field()  
-    password: str = Field()  
+    username: str = Field(..., min_length=3, max_length=50)  
+    password: str = Field(..., min_length=8, max_length=100)  
 
     class Config:
         from_attributes = True
@@ -46,3 +48,8 @@ class UserUpdate(BaseModel):
     
     class Config:
         from_attributes = True  
+
+# -------------------------- Teacher ---------------------------->
+
+class Teacher(UserRegister):
+    file_uploaded: Optional[FileUploaded] = None
