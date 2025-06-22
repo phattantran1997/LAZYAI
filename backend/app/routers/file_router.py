@@ -1,19 +1,21 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, UploadFile
 
 from app.schemas.file_uploaded import File
 from app.services.file_uploaded import *
+
 
 # ----------------------- Router -------------------------------->
 
 router = APIRouter(prefix="/files", tags=["files"])
 
-# --------------------------- Create --------------------------------->
+# --------------------------- Create / Upload --------------------------------->
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_file_uploaded_endpoint(file_uploaded_in: File):
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
+async def create_file_uploaded_endpoint(file_uploaded_in: UploadFile, username: str):
     try:
-        file_uploaded = create_file_uploaded(file_uploaded_in) 
-        return {"message": "File uploaded successfully", "file_id": str(file_uploaded.id)}  # type: ignore
+
+        file_uploaded = await create_file_uploaded(file_uploaded_in, username) 
+        return {"message": "File uploaded successfully"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     

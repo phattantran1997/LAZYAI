@@ -9,13 +9,19 @@ from app.routers.quiz_router import router as quiz_router
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import connect_db, disconnect_db  # Updated import
 
+# --------------------------- Database connection ------------------------------->
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     connect_db()
     yield
     disconnect_db()
 
+# --------------------------- FastAPI app initialization ------------------------->
+
 app = FastAPI(lifespan=lifespan)
+
+# ----------------------------------------------------------------->
 
 # CORS middleware
 app.add_middleware(

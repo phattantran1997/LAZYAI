@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+from datetime import datetime
 
 # ------------------------------------------------------------->
 
@@ -16,10 +17,10 @@ from typing import Optional
 
 
 class File(BaseModel):
-    id: Optional[str] = Field(None, alias="_id")
+    # id: Optional[str] = Field(None, alias="_id")
     file_name: str = Field(..., min_length=1, max_length=255)
     file_path: str = Field(..., min_length=1, max_length=255)
-    upload_date: str  # ISO format date string
+    upload_date: datetime
     size: int = Field(..., ge=0)  # Size in bytes, must be non-negative
     username: str = Field(..., min_length=1, max_length=50)  # Reference to the user who uploaded the file
 

@@ -1,6 +1,7 @@
 from mongoengine import Document, StringField, DateTimeField, IntField
 
 class FileUploaded(Document):
+    # file_id = StringField(primary_key=True)  # Unique identifier for the file
     file_name = StringField(required=True)
     file_path = StringField(required=True)
     upload_date = DateTimeField(required=True)
