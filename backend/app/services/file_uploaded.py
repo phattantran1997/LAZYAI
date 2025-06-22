@@ -28,7 +28,7 @@ async def convert_upload_file(file_uploaded_in: UploadFile, username) -> File:
 
 # ---------------------------- Create / Upload ------------------------>
 
-async def create_file_uploaded(file_uploaded_in: UploadFile, username) -> FileUploaded:
+async def create_file_uploaded(file_uploaded_in: UploadFile, username: str) -> FileUploaded:
     try:
         # Check in the database if the file's name has been existed
         existing_file = FileUploaded.objects(file_name=file_uploaded_in.filename).first()  # type: ignore
