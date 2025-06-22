@@ -13,8 +13,7 @@ router = APIRouter(prefix="/files", tags=["files"])
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def create_file_uploaded_endpoint(file_uploaded_in: UploadFile, username: str):
     try:
-
-        file_uploaded = await create_file_uploaded(file_uploaded_in, username) 
+        await create_file_uploaded(file_uploaded_in, username) 
         return {"message": "File uploaded successfully"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

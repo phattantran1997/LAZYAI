@@ -1,39 +1,25 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { useFile } from '../hooks/useFile'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Upload, Copy, Loader2 } from 'lucide-react'
+import { Upload, Loader2 } from 'lucide-react'
 
 const UploadScreen = () => {
-  const [file, setFile] = useState(null)
-  const [status, setStatus] = useState('')
-  const [shareLink, setShareLink] = useState('')
-  const [isUploading, setIsUploading] = useState(false)
   const { user } = useAuth()
+  const [file, setFile] = useState(null)
+  const { uploading, status, upload } = useFile()
 
   const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0]
-    setFile(selectedFile)
-    setStatus('')
-    setShareLink('')
+    setFile(e.target.files[0])
   }
 
   const handleUpload = async (e) => {
-    e.preventDefault()
-    if (!file) return
-
-    setIsUploading(true)
-    setStatus('Waiting for fine-tune...')
-
-    // Simulate API call
-    setTimeout(() => {
-      const link = `/chat/${user.username}`
-      setShareLink(link)
-      setStatus('Upload complete!')
-      setIsUploading(false)
-    }, 2000)
-  }
+    e.preventDefault();
+    if (!file) return;
+    upload(file, user.username);
+  };
 
   return (
     <div className="container max-w-2xl py-8">
@@ -69,10 +55,10 @@ const UploadScreen = () => {
 
             <Button
               type="submit"
-              disabled={!file || isUploading}
+              disabled={!file || uploading}
               className="w-full"
             >
-              {isUploading ? (
+              {uploading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Uploading...
@@ -85,38 +71,10 @@ const UploadScreen = () => {
               )}
             </Button>
 
-            {status && (
+            {(status) && (
               <div className="text-center text-muted-foreground">
                 <p>{status}</p>
               </div>
-            )}
-
-            {shareLink && (
-              <Card className="bg-muted/50">
-                <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Share this link with your students:
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="text"
-                      value={window.location.origin + shareLink}
-                      readOnly
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        navigator.clipboard.writeText(window.location.origin + shareLink)
-                      }}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
             )}
           </form>
         </CardContent>
@@ -125,4 +83,4 @@ const UploadScreen = () => {
   )
 }
 
-export default UploadScreen 
+export default UploadScreen
