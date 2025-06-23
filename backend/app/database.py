@@ -6,7 +6,7 @@ import os
 load_dotenv()
 
 # MongoDB connection
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/mydb")
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/lazydb")
 
 def connect_db():
     try:
