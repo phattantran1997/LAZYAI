@@ -2,6 +2,8 @@
 import { loginRequest, registerRequest } from '../api/authApi'
 import { setToken, clearToken, setUser, getToken, getUser } from '../utils/tokens'
 
+// -------------------------- Login --------------------------------------->
+
 export function login(username, password) {
     return loginRequest(username, password)
         .then(({ data }) => {
@@ -13,6 +15,8 @@ export function login(username, password) {
     // let callers handle errors
 }
 
+// -------------------------- Signup --------------------------------------->
+
 export function signup(username, name, email, password, role) {
     return registerRequest(username, name, email, password, role)
         .then(({ data }) => {
@@ -22,9 +26,13 @@ export function signup(username, name, email, password, role) {
         })
 }
 
+// -------------------------- Logout --------------------------------------->
+
 export function logout() {
     clearToken()
 }
+
+// -------------------------- Rehydrate ------------------------------------->
 
 export function rehydrate() {
     const token = getToken()

@@ -17,7 +17,7 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-# ------------------------ Create ------------------------>
+# ------------------------ Create / Register ------------------------>
 
 # Create a new user
 def create_user(user_in: UserRegister) -> User:
@@ -52,11 +52,6 @@ def get_user_by_id(user_id: str) -> User:
         raise ValueError("User not found")
     return user
 
-# Get all users (optional)
-def get_all_users(skip: int = 0, limit: int = 100) -> list:
-    users = User.objects.skip(skip).limit(limit) # type: ignore
-    return users
-
 # -------------------------- Update ---------------------------------->
 
 # Update a user
@@ -80,7 +75,7 @@ def update_user(user_id: str, user_input: UserUpdate) -> User:
     user.save()
     return user
 
-# --------------------- --- Delete --------------------------------->
+# ------------------------- Delete --------------------------------->
 
 # Delete a user
 def delete_user(user_id: str) -> bool:

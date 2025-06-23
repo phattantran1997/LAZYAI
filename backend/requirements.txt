@@ -9,6 +9,7 @@ langchain
 langchain-ollama
 langchain-core
 python-dotenv 
+python-multipart
 streamlit
 bcrypt
 python-jose

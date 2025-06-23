@@ -1,9 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.schemas.user import *
-from app.services.user_service import *
-
-from typing import List
+from app.services.user import *
 
 # ----------------------- Router -------------------------------->
 
@@ -39,12 +37,6 @@ async def get_user_endpoint(user_id: str):
         return user
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
-# Get all users (optional)
-@router.get("/", response_model=List[UserRegister])
-async def get_users_endpoint(skip: int = 0, limit: int = 100):
-    users = get_all_users(skip, limit)
-    return users
 
 # --------------------------- Update -------------------------------->
  
