@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Response
 
 from app.schemas.user import *
 from app.services.user import *
@@ -13,17 +13,19 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_user_endpoint(user_input: UserRegister):
     try:
-        user = register_user(user_input)
-        return {"message": "User registered successfully", "user_id": str(user.id)} # type: ignore
+        register_user(user_input)
+        return {"message": "User registered successfully"} 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 # Login endpoint
 @router.post("/login", status_code=status.HTTP_200_OK)
-async def login_user_endpoint(user_input: UserLogin):
+async def login_user_endpoint(user_input: UserLogin, response: Response):
     try:
         result = login_user(user_input)
-        return result
+        response.set_cookie("access_token", result["access_token"], httponly=True, secure=True, samesite="lax")
+        response.set_cookie("refresh_token", result["refresh_token"], httponly=True, secure=True, samesite="lax")
+        return result["user"]
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 

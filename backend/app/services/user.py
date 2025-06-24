@@ -1,5 +1,6 @@
+from fastapi import HTTPException
 from passlib.context import CryptContext
-from app.auth.jwt_handler import create_access_token 
+from app.auth.jwt_handler import create_access_token, create_refresh_token
 
 from app.models.user import User
 from app.schemas.user import *
@@ -24,9 +25,9 @@ def create_user(user_in: UserRegister) -> User:
 
     # Check if user already exists
     if User.objects(email=user_in.email).first():  # type: ignore
-        raise ValueError("Email already registered")
+        raise HTTPException(status_code=403, detail="Email already registered")
     if User.objects(username=user_in.username).first(): # type: ignore
-        raise ValueError("Username already taken")
+        raise HTTPException(status_code=403, detail="Username already taken")
 
     # Hash the password before storing it
     hashed_password = hash_password(user_in.password)
@@ -49,7 +50,7 @@ def create_user(user_in: UserRegister) -> User:
 def get_user_by_id(user_id: str) -> User:
     user = User.objects(id=user_id).first() # type: ignore
     if not user:
-        raise ValueError("User not found")
+        raise HTTPException(status_code=404, detail="User not found")
     return user
 
 # -------------------------- Update ---------------------------------->
@@ -58,7 +59,7 @@ def get_user_by_id(user_id: str) -> User:
 def update_user(user_id: str, user_input: UserUpdate) -> User:
     user = User.objects(id=user_id).first() # type: ignore
     if not user:
-        raise ValueError("User not found")
+        raise HTTPException(status_code=404, detail="User not found")
 
     # Update fields if provided
     if user_input.username:
@@ -81,7 +82,7 @@ def update_user(user_id: str, user_input: UserUpdate) -> User:
 def delete_user(user_id: str) -> bool:
     user = User.objects(id=user_id).first() # type: ignore
     if not user:
-        raise ValueError("User not found")
+        raise HTTPException(status_code=404, detail="User not found")
     user.delete()
     return True
 
@@ -93,26 +94,24 @@ def login_user(userLogin: UserLogin) -> dict:
     # Check if the user exists
     user = User.objects(username=userLogin.username).first() # type: ignore
     if not user:
-        raise ValueError("User not found")
+        raise HTTPException(status_code=404, detail="User not found")
     if not verify_password(userLogin.password, user.password):
-        raise ValueError("Invalid password")
-    
+        raise HTTPException(status_code=401, detail="Invalid password")
+
+    user_data = UserRead(
+        username=user.username,
+        email=user.email,
+        role=user.role
+    ).model_dump()
+
     # Create JWT token
-    access_token = create_access_token(
-        data={"sub": user.username, "role": user.role, "user_id": str(user.id)}
-    )
-    
+    access_token = create_access_token(user_data)
+    refresh_token = create_refresh_token(user_data)
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": str(user.id),
-            "username": user.username,
-            "name": user.name,
-            "email": user.email,
-            "role": user.role
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": user_data
         }
-    }
 
 # Register | Create new User
 def register_user(userRegister: UserRegister) -> User:
