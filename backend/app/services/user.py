@@ -18,10 +18,10 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-# ------------------------ Create / Register ------------------------>
+# ------------------------ Register ------------------------>
 
 # Create a new user
-def create_user(user_in: UserRegister) -> User:
+def register_user(user_in: UserRegister) -> User:
 
     # Check if user already exists
     if User.objects(email=user_in.email).first():  # type: ignore
@@ -90,7 +90,7 @@ def delete_user(user_id: str) -> bool:
     user.delete()
     return True
 
-# ----------------------- Log In and Register ----------------------------->
+# ----------------------- Log In ----------------------------->
 
 # Login User
 def login_user(userLogin: UserLogin) -> dict:
@@ -117,7 +117,3 @@ def login_user(userLogin: UserLogin) -> dict:
             "data_refresh_token": refresh_token,
             "user": user_data
         }
-
-# Register | Create new User
-def register_user(userRegister: UserRegister) -> User:
-    return create_user(userRegister)

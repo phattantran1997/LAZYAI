@@ -7,7 +7,7 @@ from app.services.user import *
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-# --------------------------- Create / Register / Login --------------------------------->
+# --------------------------- Create / Register / Login / Logout--------------------------------->
 
 # Create | Register new User
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -30,6 +30,15 @@ async def login_user_endpoint(user_input: UserLogin, response: Response) -> User
         response.set_cookie("refresh_token", data_refresh["refresh_token"], expires=data_refresh['exp'], httponly=True, secure=True, samesite="lax")
         return result["user"]
     
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    
+# Log out endpoint
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout_user_endpoint(response: Response):
+    try:
+        response.delete_cookie(key="access_token")
+        response.delete_cookie(key="refresh_token")
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
