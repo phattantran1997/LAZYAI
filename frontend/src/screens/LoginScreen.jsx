@@ -13,6 +13,10 @@ const LoginScreen = () => {
 
   const navigate = useNavigate()
 
+  useEffect(() => {
+    logout()
+  }, [])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     const loggedInUser = await login(username, password)
@@ -22,10 +26,6 @@ const LoginScreen = () => {
       navigate('/student')
     }
   }
-
-  useEffect(() => {
-    logout();
-  }, [])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

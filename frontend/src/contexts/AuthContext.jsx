@@ -15,30 +15,36 @@ export function AuthProvider({ children }) {
 
   // -------------------------- Get current user ------------------------------------->
 
+  const fetchCurrentUser = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const u = await authService.getCurrentUser()
+      const userData = {
+        username: u.data.username,
+        email: u.data.email,
+        role: u.data.role
+      }
+      setUser(userData)
+      return userData
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message)
+      setUser({ username: "", email: "", role: "" })
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     // Only fetch if user is not already set (lazy load)
     if (fetch) {
-      setLoading(true)
-      setError("")
-
-      authService.getCurrentUser()
-        .then(u => {
-          setUser({
-            username: u.data.username,
-            email: u.data.email,
-            role: u.data.role
-          })
-        })
-        .catch(err => {
-          setError(err.response?.data?.detail || err.message)
-        })
-        .finally(() => {
-          setLoading(false)
-        })
+      fetchCurrentUser()
     } else {
       setLoading(false)
     }
   }, [fetch])
+
 
 
   // -------------------------- Login --------------------------------->
@@ -103,7 +109,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, login, signup, logout, setFetching }}
+      value={{ user, loading, error, login, signup, logout, setFetching, fetchCurrentUser }}
     >
       {children}
     </AuthContext.Provider>
