@@ -37,6 +37,13 @@ class UserLogin(BaseModel):
     class Config:
         from_attributes = True
 
+# -------------------------- Read ---------------------------->
+
+class UserRead(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)  
+    email: EmailStr
+    role: str = Field(default="user")
+
 # ------------------------- Update ---------------------------->
 
 class UserUpdate(BaseModel):
@@ -48,8 +55,3 @@ class UserUpdate(BaseModel):
     
     class Config:
         from_attributes = True  
-
-# -------------------------- Teacher ---------------------------->
-
-class Teacher(UserRegister):
-    file_uploaded: Optional[File] = None
