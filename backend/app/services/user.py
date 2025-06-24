@@ -104,12 +104,13 @@ def login_user(userLogin: UserLogin) -> dict:
         role=user.role
     ).model_dump()
 
-    # Create JWT token
+    # Create JWT token and set expire time
     access_token = create_access_token(user_data)
     refresh_token = create_refresh_token(user_data)
+
     return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
+            "data_access_token": access_token,
+            "data_refresh_token": refresh_token,
             "user": user_data
         }
 

@@ -1,5 +1,5 @@
 from jose import jwt, JWTError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 
 # ---------------- JWT Configuration (for testing only) ---------------------------->
@@ -17,13 +17,16 @@ REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days
 # ------------------------- Access Token ---------------------------->
 
 # Generate access token
-def create_access_token(data: dict):
+def create_access_token(data: dict) -> dict:
     to_encode = data.copy()
-    expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-
     encoded_jwt = jwt.encode(to_encode, ACCESS_SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+
+    return {
+        "access_token": encoded_jwt,
+        "exp": expire
+    }
 
 
 # Verify access token
@@ -35,23 +38,30 @@ def verify_access_token(token):
         return payload
     except JWTError:
         raise HTTPException(status_code=401, detail="Your login session has expired. Please login again.") 
+    
 
 # Renew access token
-def renew_access_token(token: str):
+def renew_access_token(token: str) -> dict:
     data = verify_access_token(token)
-    new_token = create_access_token(data)
-    return new_token
+    returned_data = create_access_token(data)
+    return {
+        "access_token:": returned_data['access_token'],
+        "exp": returned_data['exp']
+    }
     
 # -------------------------- Refresh Token --------------------------->
 
 # Create access token
-def create_refresh_token(data: dict):
+def create_refresh_token(data: dict) -> dict:
     to_encode = data.copy()
-    expire = datetime.now() + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-
     encoded_jwt = jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+
+    return {
+        "refresh_token": encoded_jwt,
+        "exp": expire
+    }
 
 # Verify refresh token
 def verify_refresh_token(token: str):

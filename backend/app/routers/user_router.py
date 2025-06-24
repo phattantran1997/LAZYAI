@@ -23,9 +23,13 @@ async def register_user_endpoint(user_input: UserRegister):
 async def login_user_endpoint(user_input: UserLogin, response: Response):
     try:
         result = login_user(user_input)
-        response.set_cookie("access_token", result["access_token"], httponly=True, secure=True, samesite="lax")
-        response.set_cookie("refresh_token", result["refresh_token"], httponly=True, secure=True, samesite="lax")
+        data_access = result['data_access_token']
+        data_refresh = result['data_refresh_token']
+
+        response.set_cookie("access_token", data_access["access_token"], expires=data_access['exp'], httponly=True, secure=True, samesite="lax")
+        response.set_cookie("refresh_token", data_refresh["refresh_token"], expires=data_refresh['exp'], httponly=True, secure=True, samesite="lax")
         return result["user"]
+    
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 

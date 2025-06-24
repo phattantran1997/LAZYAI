@@ -27,7 +27,7 @@ def refresh_token(request: Request, response: Response):
     token = request.cookies.get("refresh_token")
     if(token is None):
         raise HTTPException(status_code=400 , detail="Login session has expired. Please log in again.")
-    new_access_token = renew_access_token(token)
-    response.set_cookie("access_token", new_access_token, httponly=True, secure=False, samesite="lax")
+    returned_data = renew_access_token(token)
+    response.set_cookie("access_token", returned_data['access_token'], expires=returned_data['exp'], httponly=True, secure=False, samesite="lax")
 
 
