@@ -23,5 +23,5 @@ export function logoutRequest() {
 // -------------------------- Get current user request ------------------------------------->
 
 export function getCurrentUserRequest() {
-  return apiClient.get('/auth/me')
+  return apiClient.get('/users/me')
 }

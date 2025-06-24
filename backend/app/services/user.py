@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from passlib.context import CryptContext
-from app.auth.jwt_handler import create_access_token, create_refresh_token
+from app.auth.jwt_handler import create_access_token, create_refresh_token, verify_access_token
 
 from app.models.user import User
 from app.schemas.user import *
@@ -53,6 +53,10 @@ def get_user_by_id(user_id: str) -> User:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
+# Get data from current user
+def get_current_user(token: str) -> UserRead:
+    return verify_access_token(token)
+
 # -------------------------- Update ---------------------------------->
 
 # Update a user
@@ -102,7 +106,7 @@ def login_user(userLogin: UserLogin) -> dict:
         username=user.username,
         email=user.email,
         role=user.role
-    ).model_dump()
+    )
 
     # Create JWT token and set expire time
     access_token = create_access_token(user_data)
