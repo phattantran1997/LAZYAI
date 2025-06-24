@@ -37,7 +37,6 @@ const Sidebar = () => {
   const menuItems = user?.isTeacher ? teacherMenuItems : studentMenuItems
 
   const handleLogout = () => {
-    logout()
     navigate('/login')
   }
 

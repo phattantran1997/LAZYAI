@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
@@ -9,7 +9,7 @@ import { LogIn } from 'lucide-react'
 const LoginScreen = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const { loading, error, login } = useAuth()
+  const { loading, error, login, logout } = useAuth()
 
   const navigate = useNavigate()
 
@@ -22,6 +22,10 @@ const LoginScreen = () => {
       navigate('/student')
     }
   }
+
+  useEffect(() => {
+    logout();
+  }, [])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
