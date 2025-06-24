@@ -69,23 +69,12 @@ export function AuthProvider({ children }) {
   // -------------------------- Sign up --------------------------------->
 
   const signup = (username, name, email, password, role) => {
-
-    const skip = ['/login', '/signup'];
-    const path = typeof window !== 'undefined'
-      ? window.location.pathname
-      : '';
-
-    if (skip.includes(path)) {
-      setLoading(false);
-      return;
-    }
-
     setLoading(true)
     setError('')
-
-    authService.signup(username, name, email, password, role)
+    return authService.signup(username, name, email, password, role)
       .catch(err => {
         setError(err.response?.data?.detail || err.message)
+        return null
       })
       .finally(() => {
         setLoading(false)

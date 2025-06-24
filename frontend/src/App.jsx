@@ -14,7 +14,6 @@ function App() {
           <Route path="/signup" element={<RegisterScreen />} />
           <Route path="/teacher/*" element={<TeacherDashboard />} />
           <Route path="/student" element={<StudentChatScreen />} />
-          {/* <Route path="/chat/:teacherId" element={<StudentChatScreen />} /> */}
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>

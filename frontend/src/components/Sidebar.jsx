@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '@/components/ui/button'
@@ -15,9 +15,13 @@ import {
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const { user, logout } = useAuth()
+  const { user, logout, setFetching } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    setFetching(true)
+  }, [setFetching])
 
   const teacherMenuItems = [
     { path: '/teacher/upload', label: 'Upload Material', icon: Upload },
@@ -63,8 +67,8 @@ const Sidebar = () => {
                 key={item.path}
                 to={item.path}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${location.pathname === item.path
-                    ? 'bg-accent text-accent-foreground'
-                    : 'hover:bg-accent hover:text-accent-foreground'
+                  ? 'bg-accent text-accent-foreground'
+                  : 'hover:bg-accent hover:text-accent-foreground'
                   }`}
               >
                 <Icon className="h-4 w-4" />
@@ -82,7 +86,7 @@ const Sidebar = () => {
           </div>
           {!isCollapsed && (
             <div className="flex-1">
-              <p className="text-sm font-medium">{user?.username}</p>
+              <p className="text-sm font-medium">{user.username}</p>
               <p className="text-xs text-muted-foreground">
                 {user?.isTeacher ? 'Teacher' : 'Student'}
               </p>
