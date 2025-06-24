@@ -9,21 +9,18 @@ import { LogIn } from 'lucide-react'
 const LoginScreen = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const { loading, error, login } = useAuth()
+
   const navigate = useNavigate()
-  const { login, loading, error, setError } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
-    try {
-      const user = await login(username, password)
-      if (user.role === 'Teachers') {
-        navigate('/teacher')
-      } else {
-        navigate('/student')
-      }
-    } catch (err) {
-      // error is already set in context
+    const loggedInUser = await login(username, password)
+    console.log('User logged in:', loggedInUser)
+    if (loggedInUser?.role === 'Teachers') {
+      navigate('/teacher')
+    } else if (loggedInUser?.role === 'Students') {
+      navigate('/student')
     }
   }
 
@@ -69,12 +66,12 @@ const LoginScreen = () => {
             </div>
           </CardContent>
 
-          <CardFooter>
-            {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
+          <CardFooter className="flex flex-col space-y-2">
             <Button type="submit" className="w-full" disabled={loading}>
               <LogIn className="mr-2 h-4 w-4" />
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
+            {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
           </CardFooter>
 
         </form>
