@@ -1,4 +1,4 @@
-from fastapi import UploadFile
+from fastapi import UploadFile, HTTPException
 from datetime import datetime
 
 from app.models.file_uploaded import FileUploaded 
@@ -15,7 +15,7 @@ upload_folder = os.getenv("upload_folder", "uploads")
 
 # -------------------------- Convert UploadFile to right format ---------------------------->
 
-async def convert_upload_file(file_uploaded_in: UploadFile, username) -> File:
+def convert_upload_file(file_uploaded_in: UploadFile, username) -> File:
     file_name = file_uploaded_in.filename or "default_file_name"
     file_path = upload_folder + "/" + file_name
     return File(
@@ -29,14 +29,14 @@ async def convert_upload_file(file_uploaded_in: UploadFile, username) -> File:
 # ---------------------------- Create / Upload ------------------------>
 
 async def create_file_uploaded(file_uploaded_in: UploadFile, username: str) -> FileUploaded:
-    try:
+
         # Check in the database if the file's name has been existed
         existing_file = FileUploaded.objects(file_name=file_uploaded_in.filename).first()  # type: ignore
         if existing_file:
-            raise ValueError("File with this name already exists")      
-
+            raise HTTPException(status_code=400, detail="File with this name already exists")
+        
         # Convert to file
-        file_converted: File = await convert_upload_file(file_uploaded_in, username)
+        file_converted: File = convert_upload_file(file_uploaded_in, username)
 
         # Create and save the new file uploaded record in the database
         file = FileUploaded(
@@ -55,16 +55,14 @@ async def create_file_uploaded(file_uploaded_in: UploadFile, username: str) -> F
             f.write(data)  
 
         return file
-    except Exception as e:
-        # You can log the error here if needed
-        raise ValueError(f"Failed to upload file: {e}")
+
 
 # ---------------------------- Read ------------------------>
 
 def get_file_uploaded_by_id(file_uploaded_id: str) -> FileUploaded:
     file_uploaded = FileUploaded.objects(id=file_uploaded_id).first()  # type: ignore
     if not file_uploaded:
-        raise ValueError("File uploaded record not found")
+        raise HTTPException(status_code=400, detail="File uploaded record not found")
     return file_uploaded        
 
 # ---------------------------- Delete ------------------------>
@@ -72,6 +70,6 @@ def get_file_uploaded_by_id(file_uploaded_id: str) -> FileUploaded:
 def delete_file_uploaded(file_uploaded_id: str) -> bool:
     file_uploaded = FileUploaded.objects(id=file_uploaded_id).first()  # type: ignore
     if not file_uploaded:
-        raise ValueError("File uploaded record not found")
+        raise HTTPException(status_code=400, detail="File uploaded record not found")
     file_uploaded.delete()
     return True
