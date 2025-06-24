@@ -13,21 +13,22 @@ const RegisterScreen = () => {
     const [password, setPassword] = useState('')
     const [repassword, setRepassword] = useState('')
     const [role, setRole] = useState('Students')
+    const [localError, setLocalError] = useState('')
+
+    const { signup, loading, error } = useAuth()
+
     const navigate = useNavigate()
-    const { signup, loading, error, setError } = useAuth()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setError('')
-        try {
-            if (password !== repassword) {
-                setError('Passwords do not match')
-                return
-            }
-            await signup(username, name, email, password, role)
+        setLocalError('')
+        if (password !== repassword) {
+            setLocalError('Passwords do not match')
+            return
+        }
+        const result = await signup(username, name, email, password, role)
+        if (result && !error) {
             navigate('/login')
-        } catch (err) {
-            // error is already set in context
         }
     }
 
@@ -128,12 +129,16 @@ const RegisterScreen = () => {
                         </div>
                     </CardContent>
 
-                    <CardFooter>
-                        {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
+                    <CardFooter className="flex flex-col">
                         <Button type="submit" className="w-full" disabled={loading}>
                             <LogIn className="mr-2 h-4 w-4" />
                             {loading ? 'Register...' : 'Register'}
                         </Button>
+                        {(localError || error) && (
+                            <div className="text-red-500 text-sm mb-2">
+                                {localError || error}
+                            </div>
+                        )}
                     </CardFooter>
 
                 </form>

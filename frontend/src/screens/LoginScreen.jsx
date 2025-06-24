@@ -16,7 +16,6 @@ const LoginScreen = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     const loggedInUser = await login(username, password)
-    console.log('User logged in:', loggedInUser)
     if (loggedInUser?.role === 'Teachers') {
       navigate('/teacher')
     } else if (loggedInUser?.role === 'Students') {
