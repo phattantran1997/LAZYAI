@@ -13,3 +13,15 @@ export function registerRequest(username, name, email, password, role) {
     { username, name, email, password, role }
   )
 }
+
+// -------------------------- Logout request ------------------------------------->
+
+export function logoutRequest() {
+  return apiClient.post('/users/logout')
+}
+
+// -------------------------- Get current user request ------------------------------------->
+
+export function getCurrentUserRequest() {
+  return apiClient.get('/users/me')
+}

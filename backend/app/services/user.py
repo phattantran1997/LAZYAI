@@ -1,5 +1,6 @@
+from fastapi import HTTPException
 from passlib.context import CryptContext
-from app.auth.jwt_handler import create_access_token 
+from app.auth.jwt_handler import create_access_token, create_refresh_token, verify_access_token
 
 from app.models.user import User
 from app.schemas.user import *
@@ -17,16 +18,16 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-# ------------------------ Create / Register ------------------------>
+# ------------------------ Register ------------------------>
 
 # Create a new user
-def create_user(user_in: UserRegister) -> User:
+def register_user(user_in: UserRegister) -> User:
 
     # Check if user already exists
     if User.objects(email=user_in.email).first():  # type: ignore
-        raise ValueError("Email already registered")
+        raise HTTPException(status_code=403, detail="Email already registered")
     if User.objects(username=user_in.username).first(): # type: ignore
-        raise ValueError("Username already taken")
+        raise HTTPException(status_code=403, detail="Username already taken")
 
     # Hash the password before storing it
     hashed_password = hash_password(user_in.password)
@@ -49,8 +50,12 @@ def create_user(user_in: UserRegister) -> User:
 def get_user_by_id(user_id: str) -> User:
     user = User.objects(id=user_id).first() # type: ignore
     if not user:
-        raise ValueError("User not found")
+        raise HTTPException(status_code=404, detail="User not found")
     return user
+
+# Get data from current user
+def get_current_user(token: str) -> UserRead:
+    return verify_access_token(token)
 
 # -------------------------- Update ---------------------------------->
 
@@ -58,7 +63,7 @@ def get_user_by_id(user_id: str) -> User:
 def update_user(user_id: str, user_input: UserUpdate) -> User:
     user = User.objects(id=user_id).first() # type: ignore
     if not user:
-        raise ValueError("User not found")
+        raise HTTPException(status_code=404, detail="User not found")
 
     # Update fields if provided
     if user_input.username:
@@ -81,11 +86,11 @@ def update_user(user_id: str, user_input: UserUpdate) -> User:
 def delete_user(user_id: str) -> bool:
     user = User.objects(id=user_id).first() # type: ignore
     if not user:
-        raise ValueError("User not found")
+        raise HTTPException(status_code=404, detail="User not found")
     user.delete()
     return True
 
-# ----------------------- Log In and Register ----------------------------->
+# ----------------------- Log In ----------------------------->
 
 # Login User
 def login_user(userLogin: UserLogin) -> dict:
@@ -93,27 +98,22 @@ def login_user(userLogin: UserLogin) -> dict:
     # Check if the user exists
     user = User.objects(username=userLogin.username).first() # type: ignore
     if not user:
-        raise ValueError("User not found")
+        raise HTTPException(status_code=404, detail="User not found")
     if not verify_password(userLogin.password, user.password):
-        raise ValueError("Invalid password")
-    
-    # Create JWT token
-    access_token = create_access_token(
-        data={"sub": user.username, "role": user.role, "user_id": str(user.id)}
-    )
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": str(user.id),
-            "username": user.username,
-            "name": user.name,
-            "email": user.email,
-            "role": user.role
-        }
-    }
+        raise HTTPException(status_code=401, detail="Invalid password")
 
-# Register | Create new User
-def register_user(userRegister: UserRegister) -> User:
-    return create_user(userRegister)
+    user_data = UserRead(
+        username=user.username,
+        email=user.email,
+        role=user.role
+    )
+
+    # Create JWT token and set expire time
+    access_token = create_access_token(user_data)
+    refresh_token = create_refresh_token(user_data)
+
+    return {
+            "data_access_token": access_token,
+            "data_refresh_token": refresh_token,
+            "user": user_data
+        }

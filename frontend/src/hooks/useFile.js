@@ -18,13 +18,7 @@ export const useFile = () => {
                 setStatus('Upload successful!');
             })
             .catch(err => {
-                const code = err?.response?.status;
-                if (code === 400)
-                    setStatus('Error: File name has existed. Please rename your file and try again.')
-                else if (code === 401)
-                    setStatus('Error: Unauthorized. Please log in again.')
-                else
-                    setStatus(`Error: ${err?.message || 'Upload failed'}`);
+                setStatus(err.response?.data?.detail)
             })
             .finally(() => {
                 setUploading(false);

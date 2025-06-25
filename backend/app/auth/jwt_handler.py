@@ -1,29 +1,75 @@
 from jose import jwt, JWTError
-from datetime import datetime, timedelta
-from fastapi import HTTPException, Depends
-from fastapi.security import OAuth2PasswordBearer
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from fastapi import HTTPException
 
-# JWT Configuration
-SECRET_KEY = "asdadasdasdsadasdasdavwqd"
+from app.schemas.user import UserRead
+
+# ---------------- JWT Configuration (for testing only) ---------------------------->
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
+# Access Token Configuration
+ACCESS_SECRET_KEY = "uhiuhuihohuihuihoiuoiuh"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30 # 30 minutes
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now() + expires_delta
-    else:
-        expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+# Refresh Token Configuration
+REFRESH_SECRET_KEY = "asdasdasdasdasdasdawqdasd"
+REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days
+
+# ------------------------- Access Token ---------------------------->
+
+# Generate access token
+def create_access_token(data: UserRead) -> dict:
+    to_encode = data.model_dump()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    encoded_jwt = jwt.encode(to_encode, ACCESS_SECRET_KEY, algorithm=ALGORITHM)
 
-def verify_token(token: str = Depends(oauth2_scheme)):
+    return {
+        "access_token": encoded_jwt,
+        "exp": expire
+    }
+
+
+# Verify access token
+def verify_access_token(token) -> UserRead:
+    if token is None:
+        raise HTTPException(status_code=401, detail="Please login before uploading files") 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
+        payload = jwt.decode(token, ACCESS_SECRET_KEY, algorithms=[ALGORITHM])
+        return UserRead(**payload)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Your login session has expired. Please login again.") 
+    
+
+# Renew access token
+def renew_access_token(token: str) -> dict:
+    data = verify_access_token(token)
+    returned_data = create_access_token(data)
+    return {
+        "access_token:": returned_data['access_token'],
+        "exp": returned_data['exp']
+    }
+    
+# -------------------------- Refresh Token --------------------------->
+
+# Create access token
+def create_refresh_token(data: UserRead) -> dict:
+    to_encode = data.model_dump()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
+
+    return {
+        "refresh_token": encoded_jwt,
+        "exp": expire
+    }
+
+# Verify refresh token
+def verify_refresh_token(token: str) -> UserRead:
+    try:
+        payload = jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
+        return UserRead(**payload)
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid credentials") 
+
