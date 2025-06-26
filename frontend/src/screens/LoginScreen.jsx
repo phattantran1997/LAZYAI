@@ -9,12 +9,24 @@ import { LogIn } from 'lucide-react'
 const LoginScreen = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const { loading, error, login, logout } = useAuth()
+  const { loading, error, login, fetchCurrentUser } = useAuth()
 
   const navigate = useNavigate()
 
   useEffect(() => {
-    logout()
+    const checkAuth = async () => {
+      try {
+        const currentUser = await fetchCurrentUser();
+        if (currentUser?.role === 'Teachers') {
+          navigate('/teacher')
+        } else if (currentUser?.role === 'Students') {
+          navigate('/student')
+        }
+      } catch (error) {
+        setError(error.message)
+      }
+    }
+    checkAuth()
   }, [])
 
   const handleSubmit = async (e) => {

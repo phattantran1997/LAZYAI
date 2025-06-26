@@ -26,8 +26,12 @@ async def login_user_endpoint(user_input: UserLogin, response: Response) -> User
         data_access = result['data_access_token']
         data_refresh = result['data_refresh_token']
 
-        response.set_cookie("access_token", data_access["access_token"], expires=data_access['exp'], httponly=True, secure=True, samesite="lax")
-        response.set_cookie("refresh_token", data_refresh["refresh_token"], expires=data_refresh['exp'], httponly=True, secure=True, samesite="lax")
+        #response.set_cookie("access_token", data_access['access_token'], expires=data_access['exp'], httponly=True, secure=False, samesite="lax")
+        #response.set_cookie("refresh_token", data_refresh['refresh_token'], expires=data_refresh['exp'], httponly=True, secure=False, samesite="lax")
+
+        response.headers["Authorization"] = f"Bearer {data_access['access_token']}"
+        response.headers["X-Refresh-Token"] = data_refresh["refresh_token"]
+
         return result["user"]
     
     except ValueError as e:
@@ -55,15 +59,27 @@ async def get_user_endpoint(user_id: str):
 
 # Get current user
 @router.get("/me", status_code=status.HTTP_200_OK)
-def get_current_user_endpoint(request: Request) -> UserRead:
-    token = request.cookies.get("access_token")
+def get_current_user_endpoint(request: Request):
+    # token = request.cookies.get("access_token")
+    # if token is None:
+    #     raise HTTPException(status_code=401, detail="Access token has expired")
+    # try:
+    #     user = get_current_user(token)
+    #     return user
+    # except Exception:
+    #     raise HTTPException(status_code=401, detail="Invalid token")
+    token = request.headers.get("authorization")
     if token is None:
-        raise HTTPException(status_code=401, detail="Access token has expired")
+        return {
+            "username": "",
+            "email": "",
+            "role": "", 
+        }
     try:
-        user = get_current_user(token)
+        user = get_current_user(token[len('Bearer '):])
         return user
     except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=404, detail="Invalid token")
 
 # --------------------------- Update -------------------------------->
  

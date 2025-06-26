@@ -14,11 +14,8 @@ router = APIRouter(prefix="/files", tags=["files"])
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def create_file_uploaded_endpoint(
         file_uploaded_in: UploadFile, 
-        username: str,
-        request: Request
+        username: str
     ):
-    token = request.cookies.get("access_token") 
-    verify_access_token(token)
     try:
         await create_file_uploaded(file_uploaded_in, username) 
         return {"message": "File uploaded successfully"}
