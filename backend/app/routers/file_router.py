@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, Reque
 from app.schemas.file_uploaded import File
 from app.services.file_uploaded import *
 
-from app.auth.jwt_handler import verify_access_token
+from app.auth.jwt_handler import get_current_token
 
 # ----------------------- Router -------------------------------->
 
@@ -15,10 +15,8 @@ router = APIRouter(prefix="/files", tags=["files"])
 async def create_file_uploaded_endpoint(
         file_uploaded_in: UploadFile, 
         username: str,
-        request: Request
+        token: str = Depends(get_current_token)
     ):
-    token = request.cookies.get("access_token") 
-    verify_access_token(token)
     try:
         await create_file_uploaded(file_uploaded_in, username) 
         return {"message": "File uploaded successfully"}

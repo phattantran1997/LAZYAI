@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect } from 'react'
+import { setTokens, clearTokens } from '../services/tokenStorage'
 import * as authService from '../services/authService'
 
 export const AuthContext = createContext(null)
@@ -17,7 +18,6 @@ export function AuthProvider({ children }) {
 
   const fetchCurrentUser = async () => {
     setLoading(true)
-    setError('')
     try {
       const u = await authService.getCurrentUser()
       const userData = {
@@ -28,8 +28,6 @@ export function AuthProvider({ children }) {
       setUser(userData)
       return userData
     } catch (err) {
-      setError(err.response?.data?.detail || err.message)
-      setUser({ username: "", email: "", role: "" })
       return null
     } finally {
       setLoading(false)
@@ -49,18 +47,49 @@ export function AuthProvider({ children }) {
 
   // -------------------------- Login --------------------------------->
 
+  // const login = (username, password) => {
+  //   setLoading(true)
+  //   setError('')
+
+  //   return authService.login(username, password)
+  //     .then(u => {
+  //       const loggedInUser = {
+  //         username: u.data.username,
+  //         email: u.data.email,
+  //         role: u.data.role
+  //       }
+  //       setUser(loggedInUser)
+  //       return loggedInUser
+  //     })
+  //     .catch(err => {
+  //       setError(err.response?.data?.detail || err.message)
+  //       return null
+  //     })
+  //     .finally(() => {
+  //       setLoading(false)
+  //     })
+  // }
+
   const login = (username, password) => {
     setLoading(true)
     setError('')
 
     return authService.login(username, password)
-      .then(u => {
+      .then(res => {
+        // Extract tokens from headers
+        const accessToken = res.data.access_token
+        const refreshToken = res.data.refresh_token
+        setTokens({ accessToken, refreshToken })
+
+        // Set user state
+        const u = res.data.user
         const loggedInUser = {
-          username: u.data.username,
-          email: u.data.email,
-          role: u.data.role
+          username: u.username,
+          email: u.email,
+          role: u.role
         }
         setUser(loggedInUser)
+
         return loggedInUser
       })
       .catch(err => {
@@ -89,14 +118,30 @@ export function AuthProvider({ children }) {
 
   // -------------------------- Logout --------------------------------->
 
+  // const logout = () => {
+  //   setLoading(true);
+  //   setError('');
+
+  //   authService.logout()
+  //     .then(() => {
+  //       setUser({ username: "", email: "", role: "" })
+  //     })
+  //     .catch(err => {
+  //       setError(err.response?.data?.detail || err.message)
+  //     })
+  //     .finally(() => {
+  //       setLoading(false)
+  //     })
+  // }
+
   const logout = () => {
-    setLoading(true);
-    setError('');
+    setLoading(true)
+    setError('')
+
+    clearTokens()
+    setUser({ username: "", email: "", role: "" })
 
     authService.logout()
-      .then(() => {
-        setUser({ username: "", email: "", role: "" })
-      })
       .catch(err => {
         setError(err.response?.data?.detail || err.message)
       })

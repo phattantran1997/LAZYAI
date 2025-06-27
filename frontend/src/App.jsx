@@ -4,7 +4,6 @@ import TeacherDashboard from './screens/TeacherDashboard'
 import StudentChatScreen from './screens/StudentChatScreen'
 import { AuthProvider } from './contexts/AuthContext'
 import RegisterScreen from './screens/RegisterScreen'
-import AuthDirect from './components/AuthDirect'
 
 function App() {
   return (
@@ -15,7 +14,7 @@ function App() {
           <Route path="/signup" element={<RegisterScreen />} />
           <Route path="/teacher/*" element={<TeacherDashboard />} />
           <Route path="/student" element={<StudentChatScreen />} />
-          <Route path="/" element={<AuthDirect />} />
+          <Route path="/" element={<LoginScreen />} />
         </Routes>
       </Router>
     </AuthProvider>
