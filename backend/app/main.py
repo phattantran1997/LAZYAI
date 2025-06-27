@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response, HTTPException
 from contextlib import asynccontextmanager
 
 from app.middleware.cors import setup_cors
@@ -27,9 +27,6 @@ app = FastAPI(lifespan=lifespan)
 
 # CORS middleware
 setup_cors(app)
-
-# Authentication
-
 
 # ---------------------- Routers -------------------------->
 
