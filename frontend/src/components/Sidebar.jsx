@@ -88,7 +88,7 @@ const Sidebar = () => {
             <div className="flex-1">
               <p className="text-sm font-medium">{user.username}</p>
               <p className="text-xs text-muted-foreground">
-                {user?.isTeacher ? 'Teacher' : 'Student'}
+                {user.role === 'Teachers' ? 'Teacher' : 'Student'}
               </p>
             </div>
           )}
