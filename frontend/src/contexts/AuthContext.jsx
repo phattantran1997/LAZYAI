@@ -77,19 +77,19 @@ export function AuthProvider({ children }) {
     return authService.login(username, password)
       .then(res => {
         // Extract tokens from headers
-        const accessToken = res.headers['authorization']?.split(' ')[1] // Bearer <token>
-        const refreshToken = res.headers['x-refresh-token']
-
+        const accessToken = res.data.access_token
+        const refreshToken = res.data.refresh_token
         setTokens({ accessToken, refreshToken })
 
         // Set user state
-        const u = res.data
+        const u = res.data.user
         const loggedInUser = {
           username: u.username,
           email: u.email,
           role: u.role
         }
         setUser(loggedInUser)
+
         return loggedInUser
       })
       .catch(err => {
