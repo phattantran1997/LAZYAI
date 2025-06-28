@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { Button } from '@/components/ui/button'
@@ -15,13 +15,9 @@ import {
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const { user, logout, setFetching } = useAuth()
+  const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-
-  useEffect(() => {
-    setFetching(true)
-  }, [setFetching])
 
   const teacherMenuItems = [
     { path: '/teacher/upload', label: 'Upload Material', icon: Upload },
@@ -34,7 +30,7 @@ const Sidebar = () => {
     { path: '/student/assignments', label: 'My Assignments', icon: FileCheck },
   ]
 
-  const menuItems = user?.isTeacher ? teacherMenuItems : studentMenuItems
+  const menuItems = user?.role === 'Teachers' ? teacherMenuItems : studentMenuItems
 
   const handleLogout = () => {
     logout()

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import StudentNameModal from '../components/StudentNameModal'
+import { Button } from '@/components/ui/button'
+import { LogOut } from 'lucide-react'
 
 const StudentChatScreen = () => {
   const { teacherId } = useParams()
@@ -78,6 +80,21 @@ const StudentChatScreen = () => {
     }, 1000)
   }
 
+  // ---------------- Logout function --------------------------->
+
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to logout? This will clear all your data.')) {
+      // Clear specific localStorage items
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('studentName')
+      localStorage.removeItem('user')
+      
+      alert('Logged out successfully! You will be redirected to login.')
+      window.location.href = '/login'
+    }
+  }
+
   // ---------------- Render the chat screen --------------------------->
 
   if (showModal) {
@@ -88,8 +105,19 @@ const StudentChatScreen = () => {
     <div className="max-w-4xl mx-auto h-screen flex flex-col p-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold">Chat with {teacherId}</h1>
-        <div className="text-sm text-gray-600">
-          Logged in as: {studentName}
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            Logged in as: {studentName}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
         </div>
       </div>
 
