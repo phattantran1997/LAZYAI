@@ -9,66 +9,15 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState({ "username": "", "email": "", "role": "" })
 
   // User object and loading state
-  const [fetch, setFetching] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-
-  // -------------------------- Get current user ------------------------------------->
-
-  const fetchCurrentUser = async () => {
-    setLoading(true)
-    try {
-      const u = await authService.getCurrentUser()
-      const userData = {
-        username: u.data.username,
-        email: u.data.email,
-        role: u.data.role
-      }
-      setUser(userData)
-      return userData
-    } catch (err) {
-      return null
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // Initialize loading state
   useEffect(() => {
-    // Only fetch if user is not already set (lazy load)
-    if (fetch) {
-      fetchCurrentUser()
-    } else {
-      setLoading(false)
-    }
-  }, [fetch])
-
-
+    setLoading(false)
+  }, [])
 
   // -------------------------- Login --------------------------------->
-
-  // const login = (username, password) => {
-  //   setLoading(true)
-  //   setError('')
-
-  //   return authService.login(username, password)
-  //     .then(u => {
-  //       const loggedInUser = {
-  //         username: u.data.username,
-  //         email: u.data.email,
-  //         role: u.data.role
-  //       }
-  //       setUser(loggedInUser)
-  //       return loggedInUser
-  //     })
-  //     .catch(err => {
-  //       setError(err.response?.data?.detail || err.message)
-  //       return null
-  //     })
-  //     .finally(() => {
-  //       setLoading(false)
-  //     })
-  // }
 
   const login = (username, password) => {
     setLoading(true)
@@ -118,22 +67,6 @@ export function AuthProvider({ children }) {
 
   // -------------------------- Logout --------------------------------->
 
-  // const logout = () => {
-  //   setLoading(true);
-  //   setError('');
-
-  //   authService.logout()
-  //     .then(() => {
-  //       setUser({ username: "", email: "", role: "" })
-  //     })
-  //     .catch(err => {
-  //       setError(err.response?.data?.detail || err.message)
-  //     })
-  //     .finally(() => {
-  //       setLoading(false)
-  //     })
-  // }
-
   const logout = () => {
     setLoading(true)
     setError('')
@@ -154,7 +87,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, login, signup, logout, setFetching, fetchCurrentUser }}
+      value={{ user, loading, error, login, signup, logout, setUser, setLoading, setError }}
     >
       {children}
     </AuthContext.Provider>

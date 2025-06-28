@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { getAccessToken } from '../services/tokenStorage'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,25 +12,26 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [formError, setFormError] = useState('')
-  const { loading, error, login, fetchCurrentUser } = useAuth()
+  const { loading, error, login, user } = useAuth()
 
   const navigate = useNavigate()
 
+  // Check if user is already authenticated
   useEffect(() => {
     const checkAuth = async () => {
-      try {
-        const currentUser = await fetchCurrentUser();
-        if (currentUser?.role === 'Teachers') {
+      const accessToken = getAccessToken()
+      if (accessToken && user.username) {
+        // User is already logged in, redirect to appropriate dashboard
+        if (user.role === 'Teachers') {
           navigate('/teacher')
-        } else if (currentUser?.role === 'Students') {
+        } else if (user.role === 'Students') {
           navigate('/student')
         }
-      } catch (error) {
-        setFormError(error.message)
       }
     }
+    
     checkAuth()
-  }, [])
+  }, [user, navigate])
 
   // Validation logic
   const isUsernameValid = username.length >= 3 && username.length <= 50

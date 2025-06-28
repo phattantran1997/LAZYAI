@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { getAccessToken } from '../services/tokenStorage'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,9 +16,25 @@ const RegisterScreen = () => {
     const [role, setRole] = useState('Students')
     const [localError, setLocalError] = useState('')
 
-    const { loading, error, signup } = useAuth()
+    const { loading, error, signup, user } = useAuth()
     const navigate = useNavigate()
 
+    // Check if user is already authenticated
+    useEffect(() => {
+        const checkAuth = async () => {
+            const accessToken = getAccessToken()
+            if (accessToken && user.username) {
+                // User is already logged in, redirect to appropriate dashboard
+                if (user.role === 'Teachers') {
+                    navigate('/teacher')
+                } else if (user.role === 'Students') {
+                    navigate('/student')
+                }
+            }
+        }
+        
+        checkAuth()
+    }, [user, navigate])
 
     // Validation logic
     const isUsernameValid = username.length >= 3 && username.length <= 50

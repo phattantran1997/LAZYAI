@@ -12,7 +12,7 @@ apiClient.interceptors.request.use(config => {
     return config
 })
 
-// Handle Refresh token
+// Handle response after request
 apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
