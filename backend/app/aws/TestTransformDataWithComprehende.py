@@ -3,132 +3,120 @@ import zipfile
 import os
 import tempfile
 from fpdf import FPDF
-import time
+from pypdf import PdfReader
+import spacy
+import re
+import unicodedata
 
-# Initialize AWS clients with a specific region
-s3_client = boto3.client('s3', region_name='us-east-1')  # Make sure it's the same region as your S3 bucket
-textract_client = boto3.client('textract', region_name='us-east-1')
-comprehend_client = boto3.client('comprehend', region_name='us-east-1')
+# Load spaCy model
+nlp = spacy.load("en_core_web_md")
 
-def wait_for_job(job_id):
-    """Poll Textract for job completion."""
-    while True:
-        response = textract_client.get_document_text_detection(JobId=job_id)
-        status = response['JobStatus']
-        if status in ['SUCCEEDED', 'FAILED']:
-            return response
-        time.sleep(5)  # Wait for 5 seconds before retrying
+# Initialize S3 client
+s3_client = boto3.client('s3', region_name='us-east-1')
 
-def extract_text_from_pdf(s3_bucket, s3_key):
-    # Use Textract to extract text from a PDF file
-    response = textract_client.start_document_text_detection(
-        DocumentLocation={'S3Object': {'Bucket': s3_bucket, 'Name': s3_key}}
-    )
-    
-    job_id = response['JobId']
-    
-    # Wait for Textract job to finish
-    result = wait_for_job(job_id)
-    
-    if result['JobStatus'] != 'SUCCEEDED':
-        print(f"Textract job failed for {s3_key}")
-        return ""
-    
-    # If job succeeded, process the blocks
-    extracted_text = ""
-    if 'Blocks' in result:
-        for item in result['Blocks']:
-            if item['BlockType'] == 'LINE':
-                extracted_text += item['Text'] + "\n"
-    
-    return extracted_text
+def redact_entities(text, doc):
+    redacted = text
+    offset = 0
+    for ent in doc.ents:
+        if ent.label_ in ['PERSON', 'ORG']:
+            start = ent.start_char + offset
+            end = ent.end_char + offset
+            length = end - start
+            redacted = redacted[:start] + '[REDACTED]' + redacted[end:]
+            offset += len('[REDACTED]') - length
+    return redacted
 
-def detect_pii(text):
-    # Use Comprehend to detect PII entities in the extracted text
-    response = comprehend_client.batch_detect_entities(
-        TextList=[text],
-        LanguageCode='en'
-    )
+def redact_emails_and_phones(text):
+    text = re.sub(r'\b[\w\.-]+@[\w\.-]+\.\w+\b', '[REDACTED]', text)
+    phone_patterns = [
+        r'\b\d{10,15}\b',
+        r'\b(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3,4}[\s.-]?\d{3,4}\b'
+    ]
+    for pattern in phone_patterns:
+        text = re.sub(pattern, '[REDACTED]', text)
+    return text
 
-    pii_entities = response['ResultList'][0]['Entities']
-    sanitized_text = text
-    
-    # Redact PII by replacing detected PII with '[REDACTED]'
-    for entity in pii_entities:
-        entity_text = entity['Text']
-        sanitized_text = sanitized_text.replace(entity_text, '[REDACTED]')
-    
-    return sanitized_text
+def sanitize_text(text):
+    doc = nlp(text)
+    redacted_text = redact_entities(text, doc)
+    redacted_text = redact_emails_and_phones(redacted_text)
+    return redacted_text
+
+def normalize_text_formatting(text):
+    text = unicodedata.normalize("NFKD", text)
+    replacements = {
+        "•": "-", "–": "-", "—": "-", "“": '"', "”": '"',
+        "‘": "'", "’": "'", "…": "...", "‐": "-", "\u00a0": " ",
+        "‒": "-", "\u2028": "\n", "\u2029": "\n"
+    }
+    for key, val in replacements.items():
+        text = text.replace(key, val)
+    text = re.sub(r"\.{3,}", "...", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+def extract_text_from_pdf_local(filepath):
+    text = ""
+    try:
+        reader = PdfReader(filepath)
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+    except Exception as e:
+        print(f"[ERROR] Failed to read {filepath}: {e}")
+    return text
+
+def strip_non_latin1(text):
+    return text.encode("latin-1", errors="replace").decode("latin-1")
 
 def create_pdf_from_text(text):
-    # Create a new PDF with the sanitized text
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    
     pdf.set_font("Arial", size=12)
+    text = strip_non_latin1(text)
     pdf.multi_cell(0, 10, text)
-    
-    # Save the PDF to a temporary file
     pdf_output = tempfile.NamedTemporaryFile(delete=False)
     pdf.output(pdf_output.name)
-    
     with open(pdf_output.name, 'rb') as f:
         pdf_content = f.read()
-    
-    os.remove(pdf_output.name)  # Remove the temporary file
-    
+    os.remove(pdf_output.name)
     return pdf_content
 
 def process_zip_file_from_s3(bucket_name, zip_key, destination_bucket):
-    # Download ZIP file from S3
     temp_dir = tempfile.mkdtemp()
     zip_file_path = os.path.join(temp_dir, zip_key)
-    
     s3_client.download_file(bucket_name, zip_key, zip_file_path)
-    
+
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
         zip_ref.extractall(temp_dir)
-    
-    # Process each PDF in the ZIP file
+
     for filename in os.listdir(temp_dir):
         file_path = os.path.join(temp_dir, filename)
         if os.path.isfile(file_path) and filename.endswith('.pdf'):
-            # Upload the PDF to S3 before passing it to Textract
-            s3_key_pdf = f"unzipped/{filename}"
-            s3_client.upload_file(file_path, bucket_name, s3_key_pdf)
-            
-            # Extract text from the PDF using Textract
-            extracted_text = extract_text_from_pdf(bucket_name, s3_key_pdf)
-            
-            if extracted_text:
-                # Detect PII and redact it
-                sanitized_text = detect_pii(extracted_text)
-                
-                # Create a sanitized PDF
-                sanitized_pdf = create_pdf_from_text(sanitized_text)
-                
-                # Upload the sanitized PDF back to S3
+            print(f"[INFO] Processing: {filename}")
+            extracted_text = extract_text_from_pdf_local(file_path)
+            if extracted_text.strip():
+                sanitized_text = sanitize_text(extracted_text)
+                cleaned_text = normalize_text_formatting(sanitized_text)
+                sanitized_pdf = create_pdf_from_text(cleaned_text)
                 sanitized_key = f"chunkdata/{filename}"
                 s3_client.put_object(Body=sanitized_pdf, Bucket=destination_bucket, Key=sanitized_key)
+                print(f"[SUCCESS] Uploaded: {sanitized_key}")
             else:
-                print(f"Skipping {filename} due to Textract extraction failure")
-    
-    # Clean up temporary files
+                print(f"[WARNING] Skipping {filename}: No text extracted")
+
     for filename in os.listdir(temp_dir):
         file_path = os.path.join(temp_dir, filename)
         if os.path.isfile(file_path):
             os.remove(file_path)
-
-    # Ensure the directory is empty before attempting to remove it
     if not os.listdir(temp_dir):
-        os.rmdir(temp_dir)  # Remove the empty directory
-    else:
-        print(f"Warning: Temporary directory {temp_dir} not empty!")
+        os.rmdir(temp_dir)
 
-# Example usage: process the ZIP file from S3 and store sanitized PDFs back to S3
-bucket_name = 'lazyai-input'  # S3 bucket containing the ZIP file
-zip_key = 'CV.zip'   # S3 key for the uploaded ZIP file
-destination_bucket = 'lazyai-output-chunkdata'  # S3 bucket to store sanitized PDFs
-
-process_zip_file_from_s3(bucket_name, zip_key, destination_bucket)
+# Example usage
+if __name__ == "__main__":
+    bucket_name = 'lazyai-input'
+    zip_key = 'lecture.zip'
+    destination_bucket = 'lazyai-output-chunkdata'
+    process_zip_file_from_s3(bucket_name, zip_key, destination_bucket)
