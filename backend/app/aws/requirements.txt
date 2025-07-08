@@ -1,0 +1,6 @@
+spacy
+fpdf2
+pypdf
+fonttools
+srsly
+ujson
