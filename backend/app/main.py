@@ -8,6 +8,7 @@ from app.routers.file_router import router as file_router
 from app.routers.ask_router  import router as ask_router
 from app.routers.quiz_router import router as quiz_router
 from app.routers.auth_router import router as auth_router
+from app.routers.mock_chat import router as mock_chat_router
 
 from app.database import connect_db, disconnect_db  # Updated import
 
@@ -36,6 +37,7 @@ app.include_router(ask_router)
 app.include_router(user_router)
 app.include_router(file_router)
 app.include_router(auth_router)
+app.include_router(mock_chat_router)
 
 # --------------------------------------------------------->
 
