@@ -3,7 +3,8 @@ import { useAuth } from '../hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Send } from 'lucide-react'
+import { Send, SofaIcon } from 'lucide-react'
+import axios from 'axios'
 
 const ChatScreen = () => {
   const [message, setMessage] = useState('')
@@ -13,15 +14,8 @@ const ChatScreen = () => {
       text: 'Hello! How can I help you today?',
       sender: 'ai',
       timestamp: new Date(Date.now() - 3600000),
-    },
-    {
-      id: 2,
-      text: 'I need help with my assignment.',
-      sender: 'user',
-      timestamp: new Date(Date.now() - 3500000),
-    },
+    }
   ])
-  const { user } = useAuth()
   const scrollRef = useRef(null)
 
   useEffect(() => {
@@ -32,28 +26,38 @@ const ChatScreen = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!message.trim()) return
 
-    // Add user message
-    const newMessage = {
+    // Set Message user
+    const userMessage = {
       id: messages.length + 1,
       text: message,
       sender: 'user',
-      timestamp: new Date(),
+      timestamp: new Date(Date.now() - 3600000),
     }
-    setMessages([...messages, newMessage])
-    setMessage('')
+    setMessages((prevArray) => [...prevArray, userMessage])
+    setMessage("");
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse = {
-        id: messages.length + 2,
-        text: 'I understand you need help. Could you please provide more details about your assignment?',
-        sender: 'ai',
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, aiResponse])
-    }, 1000)
+
+    // Send message to AI
+    axios.post('http://localhost:8000/chat/ask', { message: message, unit_name: "Introduction to programming with C#" })  // Send message object if API expects it that way
+      .then((response) => {
+        const AiMessage = {
+          id: messages.length + 2,  // Increment ID by 1 more than user message
+          text: response.data.text,  // Assuming response contains the text field
+          sender: 'ai',
+          timestamp: new Date(Date.now() - 3600000),
+        }
+        setMessages((prevArray) => [...prevArray, AiMessage]) // Append AI response to messages
+      })
+      .catch((e) => {
+        const ErrorMessage = {
+          id: messages.length + 2, // Increment ID by 1 more than user message
+          text: "Failed to get response from AI",
+          sender: 'ai',
+          timestamp: new Date(Date.now() - 3600000),
+        }
+        setMessages((prevArray) => [...prevArray, ErrorMessage])
+      })
   }
 
   return (
@@ -69,8 +73,8 @@ const ChatScreen = () => {
               >
                 <div
                   className={`max-w-[70%] rounded-lg px-4 py-2 ${msg.sender === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted'
                     }`}
                 >
                   <p className="text-sm">{msg.text}</p>
@@ -102,4 +106,4 @@ const ChatScreen = () => {
   )
 }
 
-export default ChatScreen 
+export default ChatScreen
