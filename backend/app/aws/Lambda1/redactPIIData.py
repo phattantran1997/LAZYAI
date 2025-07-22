@@ -18,7 +18,6 @@ nlp = spacy.load("en_core_web_md")
 s3_client = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
 track_table = dynamodb.Table("lazyai-track-user-input")
-
 DESTINATION_BUCKET = "lazyai-output-chunkdata"
 
 def redact_entities(text, doc):
@@ -90,9 +89,17 @@ def create_pdf_from_text(text):
     return content
 
 def generate_output_filename(original_name):
+    """Generate output filename preserving original name with timestamp."""
     base = os.path.splitext(original_name)[0]
     timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     return f"{base}_sanitized_{timestamp}.pdf"
+
+def get_folder_name_from_zip(zip_key):
+    """Extract folder name from ZIP file key."""
+    # Remove .zip extension and any path prefixes
+    zip_filename = os.path.basename(zip_key)
+    folder_name = os.path.splitext(zip_filename)[0]
+    return folder_name
 
 def log_to_dynamodb(original_name, s3_key_output):
     item = {
@@ -107,6 +114,10 @@ def log_to_dynamodb(original_name, s3_key_output):
 def process_zip_file_from_s3(bucket_name, zip_key):
     temp_dir = tempfile.mkdtemp()
     zip_path = os.path.join(temp_dir, "input.zip")
+    
+    # Get folder name from ZIP file
+    folder_name = get_folder_name_from_zip(zip_key)
+    print(f"[INFO] Processing ZIP: {zip_key} -> Output folder: {folder_name}")
 
     print(f"[DOWNLOAD] Downloading {zip_key} from bucket {bucket_name}")
     s3_client.download_file(bucket_name, zip_key, zip_path)
@@ -114,30 +125,43 @@ def process_zip_file_from_s3(bucket_name, zip_key):
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
         zip_ref.extractall(temp_dir)
 
-    for filename in os.listdir(temp_dir):
-        file_path = os.path.join(temp_dir, filename)
-        if os.path.isfile(file_path) and filename.lower().endswith(".pdf"):
-            print(f"[INFO] Processing PDF: {filename}")
-            extracted = extract_text_from_pdf_local(file_path)
-            if extracted.strip():
-                sanitized = sanitize_text(extracted)
-                cleaned = normalize_text_formatting(sanitized)
-                output_pdf = create_pdf_from_text(cleaned)
+    processed_files = []
+    for root, dirs, files in os.walk(temp_dir):
+        for filename in files:
+            if filename.lower().endswith(".pdf") and not filename.startswith("._"):
+                file_path = os.path.join(root, filename)
+                print(f"[INFO] Processing PDF: {filename}")
+                extracted = extract_text_from_pdf_local(file_path)
+                if extracted.strip():
+                    sanitized = sanitize_text(extracted)
+                    cleaned = normalize_text_formatting(sanitized)
+                    output_pdf = create_pdf_from_text(cleaned)
 
-                output_name = generate_output_filename(filename)
-                s3_key_out = f"chunkdata/{output_name}"
+                    # Preserve original filename but add sanitized suffix
+                    base_name = os.path.splitext(filename)[0]
+                    output_name = f"{base_name}.pdf"
+                    
+                    # Create S3 key with folder structure: chunkdata/{folder_name}/{filename}
+                    s3_key_out = f"{folder_name}/{output_name}"
 
-                s3_client.put_object(
-                    Body=output_pdf,
-                    Bucket=DESTINATION_BUCKET,
-                    Key=s3_key_out
-                )
-                print(f"[SUCCESS] Uploaded sanitized PDF to: {s3_key_out}")
+                    # Upload to S3 (this will overwrite if file exists)
+                    s3_client.put_object(
+                        Body=output_pdf,
+                        Bucket=DESTINATION_BUCKET,
+                        Key=s3_key_out
+                    )
+                    print(f"[SUCCESS] Uploaded sanitized PDF to: {s3_key_out}")
 
-                log_to_dynamodb(filename, s3_key_out)
+                    log_to_dynamodb(filename, s3_key_out)
+                    processed_files.append(output_name)
+                else:
+                    print(f"[WARNING] Skipping unreadable file: {filename}")
             else:
-                print(f"[WARNING] Skipping unreadable file: {filename}")
+                if filename.startswith("._") and filename.lower().endswith(".pdf"):
+                    print(f"[SKIP] Skipping AppleDouble/system file: {filename}")
 
+    print(f"[SUMMARY] Processed {len(processed_files)} files in folder: {folder_name}")
+    
     # Clean up: remove temp directory and all contents
     shutil.rmtree(temp_dir)
     print("[CLEANUP] Temp directory removed")

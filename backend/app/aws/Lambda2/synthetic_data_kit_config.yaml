@@ -1,0 +1,72 @@
+# Master configuration file for Synthetic Data Kit
+
+paths:
+  input:
+    pdf: "data/pdf"
+    html: "data/html"
+    youtube: "data/youtube"
+    docx: "data/docx"
+    ppt: "data/ppt"
+    txt: "data/txt"
+  output:
+    parsed: "data/output"
+    generated: "data/generated"
+    cleaned: "data/cleaned"
+    final: "data/final"
+llm:
+  provider: "api-endpoint"
+
+api-endpoint:
+  api_base: "http://localhost:11434/v1"
+  model: "llama2:latest"   # Replace with the exact model name (run `ollama list` to verify)
+
+
+# vllm:
+#   api_base: "http://localhost:11434/api"
+#   port: 8000
+#   model: "llama3-3b-instruct"
+#   max_retries: 3
+#   retry_delay: 1.0
+
+ingest:
+  default_format: "txt"
+  youtube_captions: "auto"
+
+generation:
+  temperature: 0.7
+  top_p: 0.95
+  chunk_size: 1022
+  overlap: 64
+  max_tokens: 512
+  num_pairs: 25
+
+cleanup:
+  threshold: 1.0
+  batch_size: 4
+  temperature: 0.3
+
+format:
+  default: "jsonl"
+  include_metadata: true
+  pretty_json: true
+
+prompts:
+  summary: |
+    Summarize this document in 3-5 sentences, focusing on the main topic and key concepts.
+
+  qa_generation: |
+    Create 25 question-answer pairs from this text for LLM training.
+
+    Rules:
+    1. Questions must be about important facts in the text
+    2. Answers must be directly supported by the text
+    3. Return JSON format only.
+
+    Text:
+    {text}
+
+  qa_rating: |
+    Rate each of these question-answer pairs for quality and return JSON:
+    [
+      {"question": "same question", "answer": "same answer", "rating": n}
+    ]
