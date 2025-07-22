@@ -13,3 +13,4 @@ python-multipart
 streamlit
 bcrypt
 python-jose
+Groq
