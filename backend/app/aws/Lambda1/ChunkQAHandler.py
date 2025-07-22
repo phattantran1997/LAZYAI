@@ -12,6 +12,8 @@ import ast
 import time
 import zipfile
 import spacy
+from dotenv import load_dotenv
+load_dotenv()
 
 # --- S3 Setup ---
 s3_client = boto3.client("s3")
@@ -57,22 +59,33 @@ def extract_text_from_pdf_local(filepath):
     except Exception as e:
         print(f"[ERROR] Failed to read {filepath}: {e}")
     return text
-# Function to download model from S3
-def download_model_from_s3(bucket_name, s3_key, local_path):
-    s3_client.download_file(bucket_name, s3_key, local_path)
-    print(f"Downloaded {s3_key} to {local_path}")
+
 
 def load_model():
-    model_name = "unsloth/Llama-3.2-3B-Instruct"
+    model_name = "meta-llama/Llama-3.2-3B-Instruct"
     cache_dir = "/tmp/huggingface_cache"
+    
     # Remove any local directory with the same name to force download from Hugging Face
     local_model_dir = os.path.join(os.getcwd(), model_name)
     if os.path.isdir(local_model_dir):
         print(f"[INFO] Removing local directory {local_model_dir} to avoid loading incomplete files.")
+        import shutil
         shutil.rmtree(local_model_dir)
+    
     os.makedirs(cache_dir, exist_ok=True)
+    
+    # Retrieve Hugging Face token from the environment variable
+    hf_token = os.environ.get("HF_ACCESS_TOKEN")
+    if not hf_token:
+        print("[WARN] HF_ACCESS_TOKEN environment variable not set. Attempting to load without token (may fail for private models).")
+    
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
+        # Correct usage of the token argument
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name,
+            cache_dir=cache_dir,
+            use_auth_token=hf_token  # Correct argument for the token
+        )
         print("[INFO] Tokenizer loaded successfully from Hugging Face Hub.")
     except Exception as e:
         print(f"[ERROR] Failed to load tokenizer: {e}")
@@ -158,7 +171,7 @@ def generate_qa_pairs_from_text_groq(
     api_key=None
 ):
     if api_key is None:
-        api_key = "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"
+        api_key = os.environ.get("GROQ_API_KEY")
     max_chars = 2000
     if len(text) > max_chars:
         text = text[:max_chars] + "..."

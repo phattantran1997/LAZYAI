@@ -178,21 +178,3 @@ def save_to_s3(qa_pairs, output_key):
     )
     print(f"[SUCCESS] Saved {len(qa_pairs)} QA pairs to s3://{OUTPUT_BUCKET}/{output_key}")
 
-# --- Example usage ---
-if __name__ == "__main__":
-    groq_api_key = "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"
-    chunker = SyntheticDataChunker(model_name="llama3-3b-instruct")
-    s3_folder = "IFN666"
-    paginator = s3_client.get_paginator('list_objects_v2')
-    pages = paginator.paginate(Bucket=INPUT_BUCKET, Prefix=f"{s3_folder}/")
-    all_pairs = []
-    for page in pages:
-        for obj in page.get("Contents", []):
-            key = obj["Key"]
-            if not key.lower().endswith(".pdf"):
-                continue
-            qa_pairs = process_pdf_from_s3(key, chunker, num_pairs=25, model="meta-llama/llama-4-scout-17b-16e-instruct", api_key=groq_api_key)
-            all_pairs.extend(qa_pairs)
-    # Save all pairs to S3
-    output_key = f"{s3_folder}/qa_pairs_combined.json"
-    save_to_s3(all_pairs, output_key)
