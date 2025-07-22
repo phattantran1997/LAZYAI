@@ -10,7 +10,7 @@ RUN python -m spacy download en_core_web_md \
  && python -m spacy link en_core_web_md en_core_web_md
 
 # Copy source code (your redactPIIData.py)
-COPY redactPIIData.py .
+COPY ChunkQAHandler.py .
 
 # Set CMD to handler
-CMD ["redactPIIData.lambda_handler"]
+CMD ["ChunkQAHandler.lambda_handler"]

@@ -9,7 +9,6 @@ import spacy
 import re
 import unicodedata
 import uuid
-import json
 from datetime import datetime
 
 # Load spaCy model
@@ -18,11 +17,8 @@ nlp = spacy.load("en_core_web_md")
 # Initialize AWS clients
 s3_client = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
-lambda_client = boto3.client("lambda")
 track_table = dynamodb.Table("lazyai-track-user-input")
-
 DESTINATION_BUCKET = "lazyai-output-chunkdata"
-NEXT_LAMBDA = "LazyAI-QA-Generation"  # Replace with your QA & Fine-tune Lambda name
 
 def redact_entities(text, doc):
     redacted = text
@@ -92,9 +88,22 @@ def create_pdf_from_text(text):
     os.remove(temp_file.name)
     return content
 
+def generate_output_filename(original_name):
+    """Generate output filename preserving original name with timestamp."""
+    base = os.path.splitext(original_name)[0]
+    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    return f"{base}_sanitized_{timestamp}.pdf"
+
+def get_folder_name_from_zip(zip_key):
+    """Extract folder name from ZIP file key."""
+    # Remove .zip extension and any path prefixes
+    zip_filename = os.path.basename(zip_key)
+    folder_name = os.path.splitext(zip_filename)[0]
+    return folder_name
+
 def log_to_dynamodb(original_name, s3_key_output):
     item = {
-        "id": str(uuid.uuid4()),
+        "id": str(uuid.uuid4()),  # This must match the DynamoDB PK name: 'id'
         "filename": original_name,
         "s3_output_key": s3_key_output,
         "timestamp": datetime.utcnow().isoformat()
@@ -105,10 +114,12 @@ def log_to_dynamodb(original_name, s3_key_output):
 def process_zip_file_from_s3(bucket_name, zip_key):
     temp_dir = tempfile.mkdtemp()
     zip_path = os.path.join(temp_dir, "input.zip")
-
-    folder_name = os.path.splitext(os.path.basename(zip_key))[0]
+    
+    # Get folder name from ZIP file
+    folder_name = get_folder_name_from_zip(zip_key)
     print(f"[INFO] Processing ZIP: {zip_key} -> Output folder: {folder_name}")
 
+    print(f"[DOWNLOAD] Downloading {zip_key} from bucket {bucket_name}")
     s3_client.download_file(bucket_name, zip_key, zip_path)
 
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
@@ -126,9 +137,14 @@ def process_zip_file_from_s3(bucket_name, zip_key):
                     cleaned = normalize_text_formatting(sanitized)
                     output_pdf = create_pdf_from_text(cleaned)
 
-                    output_name = f"{os.path.splitext(filename)[0]}.pdf"
+                    # Preserve original filename but add sanitized suffix
+                    base_name = os.path.splitext(filename)[0]
+                    output_name = f"{base_name}.pdf"
+                    
+                    # Create S3 key with folder structure: chunkdata/{folder_name}/{filename}
                     s3_key_out = f"{folder_name}/{output_name}"
 
+                    # Upload to S3 (this will overwrite if file exists)
                     s3_client.put_object(
                         Body=output_pdf,
                         Bucket=DESTINATION_BUCKET,
@@ -140,31 +156,15 @@ def process_zip_file_from_s3(bucket_name, zip_key):
                     processed_files.append(output_name)
                 else:
                     print(f"[WARNING] Skipping unreadable file: {filename}")
+            else:
+                if filename.startswith("._") and filename.lower().endswith(".pdf"):
+                    print(f"[SKIP] Skipping AppleDouble/system file: {filename}")
 
     print(f"[SUMMARY] Processed {len(processed_files)} files in folder: {folder_name}")
+    
+    # Clean up: remove temp directory and all contents
     shutil.rmtree(temp_dir)
     print("[CLEANUP] Temp directory removed")
-
-    # Trigger next Lambda after all files processed
-    if processed_files:
-        print(f"[TRIGGER] Invoking next Lambda: {NEXT_LAMBDA}")
-        payload = {
-            "job_id": folder_name,
-            "processed_files": processed_files,
-            "output_bucket": DESTINATION_BUCKET,
-            "output_prefix": folder_name
-        }
-        try:
-            response = lambda_client.invoke(
-                FunctionName=NEXT_LAMBDA,
-                InvocationType="Event",  # Asynchronous
-                Payload=json.dumps(payload)
-            )
-            print(f"[TRIGGER] Lambda invoke response: {response}")
-            print(f"[TRIGGER] Successfully invoked {NEXT_LAMBDA} with payload: {json.dumps(payload)}")
-        except Exception as e:
-            print(f"[ERROR] Failed to invoke {NEXT_LAMBDA}: {str(e)}")
-            print(f"[ERROR] Payload was: {json.dumps(payload)}")
 
 def lambda_handler(event, context):
     print("[START] Lambda handler invoked")

@@ -1,6 +1,9 @@
+boto3
 spacy
 fpdf2
 pypdf
 fonttools
 srsly
-ujson
+numpy
+transformers
+groq

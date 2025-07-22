@@ -1,251 +1,198 @@
-import boto3
-import json
 import os
+import json
 import tempfile
-from datetime import datetime
-from pypdf import PdfReader
-from sagemaker.predictor import retrieve_default
+import boto3
 import re
+from pathlib import Path
+from pypdf import PdfReader
+import spacy
+from transformers import AutoTokenizer
+import numpy as np
+from groq import Groq
+import time
+import ast
 
-# AWS config
+# --- S3 Setup ---
 s3_client = boto3.client("s3")
-ENDPOINT_NAME = "jumpstart-dft-meta-textgeneration-l-20250718-042336"
 INPUT_BUCKET = "lazyai-output-chunkdata"
 OUTPUT_BUCKET = "lazyai-output"
 
-# QA generation config
-QA_CONFIG = {
-    "temperature": 0.7,
-    "top_p": 0.95,
-    "max_generation_tokens": 512,
-    "num_questions_per_doc": 5,
-    "chunk_size": 1000,
-    "chunk_overlap": 200,
-    "max_text_length": 2000,
-    "retry_count": 2
-}
+# --- PII Redaction with spaCy ---
+nlp = spacy.load("en_core_web_sm")
+PII_LABELS = {"PERSON", "GPE", "ORG", "LOC", "EMAIL", "DATE", "TIME", "MONEY", "CARDINAL"}
+
+def redact_pii(text):
+    doc = nlp(text)
+    redacted = text
+    for ent in reversed(doc.ents):
+        if ent.label_ in PII_LABELS:
+            redacted = redacted[:ent.start_char] + "[REDACTED]" + redacted[ent.end_char:]
+    return redacted
+
+# --- PDF Extraction ---
+def extract_text_from_pdf(pdf_content):
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
+        temp_file.write(pdf_content)
+        temp_path = temp_file.name
+    reader = PdfReader(temp_path)
+    text = ""
+    for page in reader.pages:
+        page_text = page.extract_text()
+        if page_text:
+            text += page_text + "\n"
+    os.unlink(temp_path)
+    return text.strip()
+
+# --- Chunking (token-based) ---
+class SyntheticDataChunker:
+    def __init__(self, model_name="llama3-3b-instruct", max_seq_length=2048, max_generation_tokens=512, overlap=64):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(current_dir, "..", "..", "..", model_name)
+        model_path = os.path.abspath(model_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        self.max_seq_length = max_seq_length
+        self.max_generation_tokens = max_generation_tokens
+        self.overlap = overlap
+
+    def chunk_data(self, text):
+        max_tokens = self.max_seq_length - self.max_generation_tokens * 2 - 128
+        input_ids = self.tokenizer(text, add_special_tokens=False).input_ids
+        length = len(input_ids)
+        n_chunks = int(np.ceil(length / (max_tokens - self.overlap)))
+        boundaries = np.ceil(np.linspace(0, length - self.overlap, n_chunks)).astype(int)
+        boundaries = np.stack((boundaries[:-1], (boundaries + self.overlap)[1:])).T
+        boundaries = np.minimum(boundaries, length).tolist()
+        chunks = [self.tokenizer.decode(input_ids[left:right]) for left, right in boundaries]
+        return chunks
 
 def clean_text_ignore_redacted(text):
-    """Loại bỏ các đoạn chứa [REDACTED] (ẩn PII) trước khi gửi sang LLM."""
+    """Remove heavily redacted lines and strip leftover [REDACTED] tags."""
     cleaned_lines = []
     for line in text.splitlines():
         tokens = line.split()
         redacted_count = sum(1 for t in tokens if t == "[REDACTED]")
         if len(tokens) == 0 or redacted_count / max(1, len(tokens)) > 0.5:
             continue
-        line_cleaned = line.replace("[REDACTED]", "").strip()
-        if line_cleaned:
-            cleaned_lines.append(line_cleaned)
+        cleaned_lines.append(line.replace("[REDACTED]", "").strip())
     return "\n".join(cleaned_lines)
 
-def chunk_text(text, chunk_size=1000, overlap=200):
-    """Chunk văn bản theo kiểu Unsloth: giữ ngữ cảnh, bỏ đoạn quá ngắn, làm sạch spacing."""
-    text = clean_text_ignore_redacted(text)
-    text = re.sub(r'\s+', ' ', text).strip()
+def fix_unescaped_quotes(json_str):
+    def replacer(match):
+        inner = match.group(1)
+        return '"' + inner.replace('"', "'") + '"'
+    return re.sub(r'"([^"\n]*?)"(?=,|\})', replacer, json_str)
 
-    if not text:
+def extract_qa_pairs_regex(text):
+    qa_pairs = []
+    pattern = re.compile(r'\{\s*"question"\s*:\s*"(.*?)"\s*,\s*"answer"\s*:\s*"(.*?)"\s*\}')
+    for match in pattern.finditer(text):
+        question = match.group(1).replace('"', "'")
+        answer = match.group(2).replace('"', "'")
+        qa_pairs.append({"question": question, "answer": answer})
+    if qa_pairs:
+        print(f"[FALLBACK] Extracted {len(qa_pairs)} QA pairs using regex fallback.")
+    else:
+        print("[FALLBACK] No QA pairs could be extracted using regex fallback.")
+    return qa_pairs
+
+def extract_json_array(response_text):
+    start_idx = response_text.find('[')
+    end_idx = response_text.rfind(']') + 1
+    if start_idx == -1 or end_idx == -1:
+        print("[WARN] Could not find JSON array in response. Attempting regex fallback.")
+        return extract_qa_pairs_regex(response_text)
+    json_str = response_text[start_idx:end_idx]
+    json_str = re.sub(r',\s*\]', ']', json_str)
+    json_str = json_str.replace("'", '"')
+    json_str = re.sub(r'\n', ' ', json_str)
+    json_str = fix_unescaped_quotes(json_str)
+    try:
+        return json.loads(json_str)
+    except Exception:
+        try:
+            return ast.literal_eval(json_str)
+        except Exception as e:
+            print(f"[ERROR] Still failed to parse JSON: {e}")
+            print(f"[ERROR] Raw JSON string: {json_str[:200]}...")
+            print("[WARN] Attempting regex fallback.")
+            return extract_qa_pairs_regex(json_str)
+
+# --- QA Generation (Groq) ---
+def generate_qa_pairs_from_text_groq(
+    text,
+    model="meta-llama/llama-4-scout-17b-16e-instruct",
+    num_pairs=25,
+    api_key=None
+):
+    if api_key is None:
+        api_key = os.environ.get("GROQ_API_KEY")
+    max_chars = 2000
+    if len(text) > max_chars:
+        text = text[:max_chars] + "..."
+    prompt = f"""Create {num_pairs} question-answer pairs from this text. Return only a JSON array like this:\n[\n  {{\"question\": \"What is the main topic?\", \"answer\": \"The main topic is...\"}},\n  {{\"question\": \"What are the key points?\", \"answer\": \"The key points are...\"}}\n]\n\nText: {text}"""
+    client = Groq(api_key=api_key)
+    completion = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+        max_completion_tokens=1024,
+        top_p=1,
+        stream=False,
+        stop=None,
+    )
+    response_text = completion.choices[0].message.content
+    qa_pairs = extract_json_array(response_text)
+    if qa_pairs:
+        return qa_pairs
+    else:
+        print(f"[ERROR] Could not parse QA pairs from model output.")
+        print(f"[ERROR] Response preview: {response_text[:200]}...")
         return []
 
-    chunks, start = [], 0
-    while start < len(text):
-        end = min(len(text), start + chunk_size)
-        # cắt tại dấu câu gần cuối chunk để tự nhiên hơn
-        while end < len(text) and end > start and text[end-1] not in '.!?':
-            end -= 1
-        if end <= start:
-            end = min(len(text), start + chunk_size)
+# --- Main Pipeline ---
+def process_pdf_from_s3(s3_key, chunker, num_pairs=25, model="meta-llama/llama-4-scout-17b-16e-instruct", api_key=None):
+    print(f"[INFO] Processing file {s3_key}")
+    pdf_data = s3_client.get_object(Bucket=INPUT_BUCKET, Key=s3_key)["Body"].read()
+    text = extract_text_from_pdf(pdf_data)
+    redacted_text = redact_pii(text)
+    chunks = chunker.chunk_data(redacted_text)
+    all_qa_pairs = []
+    for idx, chunk in enumerate(chunks):
+        cleaned_chunk = clean_text_ignore_redacted(chunk)
+        if not cleaned_chunk.strip() or len(cleaned_chunk.strip()) < 30:
+            print(f"[WARN] Skipping empty or too-short chunk {idx} in {s3_key}")
+            continue
+        qa_pairs = generate_qa_pairs_from_text_groq(cleaned_chunk, num_pairs=num_pairs, model=model, api_key=api_key)
+        for qa in qa_pairs:
+            qa["source_file"] = s3_key
+            qa["chunk_index"] = idx
+        all_qa_pairs.extend(qa_pairs)
+    return all_qa_pairs
 
-        chunk = text[start:end].strip()
-        if len(chunk) > 50:  # bỏ đoạn quá ngắn
-            chunks.append(chunk)
-        start = max(end - overlap, end)
-    return chunks
+def save_to_s3(qa_pairs, output_key):
+    s3_client.put_object(
+        Bucket=OUTPUT_BUCKET,
+        Key=output_key,
+        Body=json.dumps(qa_pairs, indent=2),
+        ContentType="application/json"
+    )
+    print(f"[SUCCESS] Saved {len(qa_pairs)} QA pairs to s3://{OUTPUT_BUCKET}/{output_key}")
 
-def extract_text_from_pdf(pdf_content):
-    """Extract all text from a PDF file, ignore [REDACTED] segments."""
-    try:
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
-            temp_file.write(pdf_content)
-            temp_path = temp_file.name
-        reader = PdfReader(temp_path)
-        text = ""
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
-        os.unlink(temp_path)
-        return clean_text_ignore_redacted(text).strip()
-    except Exception as e:
-        print(f"[ERROR] PDF extraction failed: {e}")
-        return ""
-
-class UnslothJumpstartQAGenerator:
-    def __init__(self, endpoint_name, config=None):
-        self.endpoint_name = endpoint_name
-        self.config = config or QA_CONFIG
-        self.predictor = retrieve_default(endpoint_name)
-        print(f"[INFO] QA Generator initialized with endpoint {endpoint_name}")
-
-    def generate_for_chunk(self, text, num_pairs=5):
-        """Generate QA pairs for a single text chunk using Jumpstart (ChatML format)."""
-        if len(text) > self.config["max_text_length"]:
-            text = text[:self.config["max_text_length"]] + "..."
-
-        prompt = f"""
-<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-You are a dataset generator.
-1) Structure the text below into a QA dataset in ChatML format for fine-tuning.
-2) Each example must follow this JSON format:
-{{
-  "messages": [
-    {{"role": "user", "content": "<question>"}},
-    {{"role": "assistant", "content": "<answer>"}}
-  ]
-}}
-3) Then, generate {num_pairs} additional synthetic QA examples on the same topic, also in this format.
-4) Output ONLY a single valid JSON array. No commentary.
-<|eot_id|><|start_header_id|>user<|end_header_id|>
-Text:
-{text}
-<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-"""
-        payload = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": self.config["max_generation_tokens"],
-                "temperature": self.config["temperature"],
-                "top_p": self.config["top_p"],
-                "stop": "<|eot_id|>"
-            }
-        }
-
-        for attempt in range(self.config.get("retry_count", 2)):
-            try:
-                response = self.predictor.predict(payload)
-                generated_text = ""
-                if isinstance(response, dict) and "body" in response:
-                    generated_text = response["body"].get("generated_text", "")
-                elif isinstance(response, list) and len(response) > 0:
-                    generated_text = response[0].get("generated_text", "")
-                else:
-                    generated_text = str(response)
-                print(f"[DEBUG] Model output (first 200 chars): {generated_text[:200]}")
-
-                # Extract JSON array
-                match = re.search(r"\[.*\]", generated_text, re.S)
-                if not match:
-                    raise ValueError("No JSON array found in model output")
-                json_str = match.group(0)
-                qa_pairs = json.loads(json_str)
-
-                # Validate and normalize structure
-                valid_pairs = []
-                for qa in qa_pairs:
-                    if isinstance(qa, dict) and "messages" in qa:
-                        valid_pairs.append(qa)
-                    elif isinstance(qa, dict) and "question" in qa and "answer" in qa:
-                        valid_pairs.append({
-                            "messages": [
-                                {"role": "user", "content": qa["question"]},
-                                {"role": "assistant", "content": qa["answer"]}
-                            ]
-                        })
-                if valid_pairs:
-                    return valid_pairs
-            except Exception as e:
-                print(f"[WARNING] QA generation attempt {attempt+1} failed: {e}")
-
-        print("[WARNING] Returning fallback QA due to repeated failure")
-        return [{
-            "messages": [
-                {"role": "user", "content": "Summarize the text."},
-                {"role": "assistant", "content": text[:200] + "..."}
-            ]
-        }]
-
-def process_folder_from_s3(folder, generator):
-    print(f"[INFO] Processing folder {folder}")
+# --- Example usage ---
+if __name__ == "__main__":
+    groq_api_key = "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"
+    chunker = SyntheticDataChunker(model_name="llama3-3b-instruct")
+    s3_folder = "IFN666"
     paginator = s3_client.get_paginator('list_objects_v2')
-    pages = paginator.paginate(Bucket=INPUT_BUCKET, Prefix=f"{folder}/")
-
+    pages = paginator.paginate(Bucket=INPUT_BUCKET, Prefix=f"{s3_folder}/")
     all_pairs = []
-    file_count = 0
-
     for page in pages:
         for obj in page.get("Contents", []):
             key = obj["Key"]
             if not key.lower().endswith(".pdf"):
                 continue
-            print(f"[INFO] Processing file {key}")
-            pdf_data = s3_client.get_object(Bucket=INPUT_BUCKET, Key=key)["Body"].read()
-            text = extract_text_from_pdf(pdf_data)
-            if not text:
-                print(f"[WARNING] No usable text (after redacted filter) in {key}")
-                continue
-
-            chunks = chunk_text(text, generator.config["chunk_size"], generator.config["chunk_overlap"])
-            pairs_for_file = []
-
-            total_questions = generator.config["num_questions_per_doc"]
-            per_chunk = max(1, total_questions // len(chunks)) if chunks else 1
-
-            for idx, chunk in enumerate(chunks):
-                qa_pairs = generator.generate_for_chunk(chunk, num_pairs=per_chunk)
-                # Thêm metadata cho tracking
-                for qa in qa_pairs:
-                    qa["source_file"] = key
-                    qa["chunk_index"] = idx
-                    qa["total_chunks"] = len(chunks)
-                    qa["timestamp"] = datetime.utcnow().isoformat()
-                pairs_for_file.extend(qa_pairs)
-                print(f"[INFO] Generated {len(qa_pairs)} pairs from chunk {idx+1}/{len(chunks)}")
-
-            all_pairs.extend(pairs_for_file)
-            file_count += 1
-            print(f"[SUCCESS] Generated {len(pairs_for_file)} pairs for {key}")
-    return all_pairs, file_count
-
-def save_to_s3_as_ft(qa_pairs, folder):
-    if not qa_pairs:
-        print("[WARNING] No QA pairs to save")
-        return None
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    key = f"{folder}/qa_pairs_ft_{timestamp}.json"
-    s3_client.put_object(
-        Bucket=OUTPUT_BUCKET,
-        Key=key,
-        Body=json.dumps(qa_pairs, indent=2),
-        ContentType="application/json"
-    )
-    print(f"[SUCCESS] Saved {len(qa_pairs)} QA conversations to s3://{OUTPUT_BUCKET}/{key}")
-    return key
-
-def lambda_handler(event, context):
-    print("[START] Unsloth-Jumpstart QA Generator Lambda invoked")
-    try:
-        job_id = event.get("job_id")
-        folder_path = event.get("folder_path")
-        generator = UnslothJumpstartQAGenerator(ENDPOINT_NAME, QA_CONFIG)
-
-        qa_pairs, file_count = process_folder_from_s3(folder_path, generator)
-        output_key = save_to_s3_as_ft(qa_pairs, folder_path)
-
-        return {
-            "statusCode": 200,
-            "body": {
-                "status": "success",
-                "job_id": job_id,
-                "processed_files": file_count,
-                "qa_pairs_generated": len(qa_pairs),
-                "output_location": f"s3://{OUTPUT_BUCKET}/{output_key}" if output_key else "No data",
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        }
-    except Exception as e:
-        print(f"[ERROR] Lambda failed: {e}")
-        return {"statusCode": 500, "body": {"error": str(e)}}
-
-# Local test
-if __name__ == "__main__":
-    test_event = {"job_id": "IFN666_QA", "folder_path": "IFN666"}
-    print(json.dumps(lambda_handler(test_event, None), indent=2))
+            qa_pairs = process_pdf_from_s3(key, chunker, num_pairs=25, model="meta-llama/llama-4-scout-17b-16e-instruct", api_key=groq_api_key)
+            all_pairs.extend(qa_pairs)
+    # Save all pairs to S3
+    output_key = f"{s3_folder}/qa_pairs_combined.json"
+    save_to_s3(all_pairs, output_key)
