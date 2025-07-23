@@ -39,7 +39,7 @@ const ChatScreen = () => {
 
 
     // Send message to AI
-    axios.post('http://localhost:8000/chat/ask', { message: message, unit_name: "Introduction to programming with C#" })  // Send message object if API expects it that way
+    axios.post('http://localhost:8000/chat/ask', { message: message, unit_name: localStorage.getItem('unitname') })  // Send message object if API expects it that way
       .then((response) => {
         const AiMessage = {
           id: messages.length + 2,  // Increment ID by 1 more than user message
