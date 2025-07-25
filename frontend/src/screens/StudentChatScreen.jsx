@@ -3,9 +3,12 @@ import { useParams } from 'react-router-dom'
 import StudentNameModal from '../components/StudentNameModal'
 import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
+import axios from 'axios';
 
 const StudentChatScreen = () => {
   const { teacherId } = useParams()
+  const { unitname: paramUnitname } = useParams();
+  const unitname = paramUnitname || 'web app development in nodejs';
   const [studentName, setStudentName] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [message, setMessage] = useState('')
@@ -58,26 +61,36 @@ const StudentChatScreen = () => {
     e.preventDefault()
     if (!message.trim()) return
 
-    // Add user message
-    const newMessage = {
+    // Set Message user
+    const userMessage = {
       id: messages.length + 1,
       text: message,
       sender: 'user',
-      timestamp: new Date(),
+      timestamp: new Date(Date.now() - 3600000),
     }
-    setMessages([...messages, newMessage])
-    setMessage('')
+    setMessages((prevArray) => [...prevArray, userMessage])
+    setMessage("");
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse = {
-        id: messages.length + 2,
-        text: 'Thank you for your question. Let me help you with that.',
-        sender: 'ai',
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, aiResponse])
-    }, 1000)
+    // Send message to AI
+    axios.post('http://localhost:8000/chat/ask', { message: message, unit_name: unitname })
+      .then((response) => {
+        const AiMessage = {
+          id: messages.length + 2,
+          text: response.data.text,
+          sender: 'ai',
+          timestamp: new Date(Date.now() - 3600000),
+        }
+        setMessages((prevArray) => [...prevArray, AiMessage])
+      })
+      .catch((e) => {
+        const ErrorMessage = {
+          id: messages.length + 2,
+          text: "Failed to get response from AI",
+          sender: 'ai',
+          timestamp: new Date(Date.now() - 3600000),
+        }
+        setMessages((prevArray) => [...prevArray, ErrorMessage])
+      })
   }
 
   // ---------------- Logout function --------------------------->
